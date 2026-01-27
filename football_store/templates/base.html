@@ -1,0 +1,265 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}Football Store{% endblock %}</title>
+
+    <!-- BOOTSTRAP CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.png' %}">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#198754">
+
+    <!-- GOOGLE FONTS -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+
+    <!-- FONT AWESOME -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+    <!-- YOUR CUSTOM CSS (must be LAST so it overrides Bootstrap) -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <style>
+        /* -------- PRODUCT GALLERY -------- */
+
+.product-gallery {
+    margin-top: 15px;
+}
+
+/* Thumbnails */
+.thumbnail-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.thumb-img {
+    width: 20%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.thumb-img:hover,
+.thumb-img.active {
+    border-color: #2874f0; /* Flipkart blue */
+}
+
+/* Main image */
+.main-image-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
+
+.main-product-img {
+    width: 100%;
+    transition: transform 0.3s ease;
+}
+
+/* Zoom effect */
+.main-image-container:hover .main-product-img {
+    transform: scale(1.6);
+    cursor: zoom-in;
+}
+
+/* Disable zoom on mobile */
+@media (max-width: 768px) {
+    .main-image-container:hover .main-product-img {
+        transform: none;
+    }
+}
+
+/* Fade out animation */
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
+    </style>
+</head>
+
+<body class="d-flex flex-column min-vh-100 {% block body_class %}{% endblock %}">
+
+    {% include "navbar.html" %}
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-fill">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- FOOTER -->
+    {% include "footer.html" %}
+
+    <!-- BOOTSTRAP JS -->
+
+<script>
+    window.WISHLIST_TOGGLE_URL = "{% url 'toggle_wishlist_ajax' %}";
+    window.CSRF_TOKEN = "{{ csrf_token }}";
+
+    window.INITIAL_CART_COUNT = {{ cart_count|default_if_none:0 }};
+    window.INITIAL_WISHLIST_COUNT = {{ wishlist_count|default_if_none:0 }};
+    window.IS_AUTHENTICATED = {{ user.is_authenticated|lower }};
+    window.LOGIN_URL = "{% url 'login' %}";
+</script>
+
+<script src="{% static 'js/main.js' %}"></script>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const themeToggle = document.getElementById("theme-toggle");
+    const themeIcon = document.getElementById("theme-icon");
+
+    // Load saved theme
+    if (localStorage.getItem("theme") === "dark") {
+        document.body.classList.add("dark-mode");
+        themeIcon.classList.remove("fa-moon-o");
+        themeIcon.classList.add("fa-sun-o");
+    }
+
+    themeToggle.addEventListener("click", () => {
+        document.body.classList.toggle("dark-mode");
+
+        if (document.body.classList.contains("dark-mode")) {
+            themeIcon.classList.remove("fa-moon-o");
+            themeIcon.classList.add("fa-sun-o");
+            localStorage.setItem("theme", "dark");
+        } else {
+            themeIcon.classList.remove("fa-sun-o");
+            themeIcon.classList.add("fa-moon-o");
+            localStorage.setItem("theme", "light");
+        }
+    });
+
+
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register("/service-worker.js")
+    .then(() => console.log("SW registered"))
+    .catch(err => console.log("SW failed", err));
+    }
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    const toggleBtn = document.getElementById("themeToggle");
+    const themeIcon = document.getElementById("theme-icon");
+    const savedTheme = localStorage.getItem("theme");
+
+    if (savedTheme === "dark") {
+        document.body.classList.add("dark-mode");
+    }
+
+    toggleBtn.addEventListener("click", () => {
+        document.body.classList.toggle("dark-mode");
+
+        if (document.body.classList.contains("dark-mode")) {
+            themeIcon.classList.remove("fa-moon-o");
+            themeIcon.classList.add("fa-sun-o");
+            localStorage.setItem("theme", "dark");
+        } else {
+            themeIcon.classList.remove("fa-sun-o");
+            themeIcon.classList.add("fa-moon-o");
+            localStorage.setItem("theme", "light");
+        }
+    });
+});
+
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    document.querySelectorAll(".quantity-box").forEach(box => {
+
+        let input = box.querySelector(".qty-input");
+        let plusBtn = box.querySelector(".plus");
+        let minusBtn = box.querySelector(".minus");
+
+        plusBtn.addEventListener("click", function () {
+            input.value = parseInt(input.value) + 1;
+        });
+
+        minusBtn.addEventListener("click", function () {
+            if (parseInt(input.value) > 1) {
+                input.value = parseInt(input.value) - 1;
+            }
+        });
+    });
+
+});
+
+/* ================= CONVERT DJANGO MESSAGES TO TOASTS ================= */
+document.addEventListener("DOMContentLoaded", function () {
+    // Get all alert elements (including hidden ones)
+    const alertElements = document.querySelectorAll(".alert");
+    
+    // Check if we're on home page - more flexible detection
+    const pathname = window.location.pathname;
+    const isHomePage = pathname === "/" || pathname === "/index/" || pathname === "/main/" || pathname === "";
+    
+    console.log("🔍 Pathname:", pathname);
+    console.log("🔍 Toast Script - Checking messages. Home page:", isHomePage, "Alerts found:", alertElements.length);
+    console.log("🔍 showWelcomeToast available:", typeof showWelcomeToast);
+    
+    alertElements.forEach((alert, index) => {
+        const message = alert.textContent.trim();
+        const classes = alert.className;
+        
+        console.log(`📬 Alert ${index + 1}: "${message}" Classes: ${classes}`);
+        
+        let messageType = "success";
+        
+        // Detect message type from alert classes
+        if (alert.classList.contains("alert-danger")) {
+            messageType = "error";
+        } else if (alert.classList.contains("alert-warning")) {
+            messageType = "warning";
+        } else if (alert.classList.contains("alert-info")) {
+            messageType = "info";
+        } else if (alert.classList.contains("alert-success")) {
+            messageType = "success";
+        }
+        
+        console.log("Message type detected:", messageType, "Is home page:", isHomePage);
+        
+        // Show premium welcome toast ONLY on home page for success messages with Welcome
+        if (isHomePage && messageType === "success" && message.includes("Welcome") && typeof showWelcomeToast === "function") {
+            console.log("🎉 SHOWING WELCOME TOAST!");
+            showWelcomeToast(message);
+            alert.remove();
+        } 
+        // Show regular notifications for other messages on non-home pages
+        else if (!isHomePage && typeof showNotification === "function") {
+            console.log("📢 SHOWING REGULAR NOTIFICATION!");
+            showNotification(message, messageType);
+            alert.remove();
+        }
+        // On home page with non-welcome messages, just remove the alert
+        else if (isHomePage) {
+            alert.remove();
+        }
+    });
+});
+
+
+</script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,29 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block content %}
+<h3>Orders</h3>
+<table class="table">
+  <thead><tr><th>ID</th><th>User</th><th>Total</th><th>Status</th><th>ordered_at</th><th></th></tr></thead>
+  <tbody>
+    {% for o in orders %}
+    <tr>
+      <td>{{ o.id }}</td>
+      <td>{{ o.user.username }}</td>
+      <td>₹{{ o.total_amount }}</td>
+      <td>
+        {% if o.status == 'delivered' %}
+          <span class="badge bg-success">Delivered</span>
+        {% elif o.status == 'cancelled' %}
+          <span class="badge bg-danger">Cancelled</span>
+        {% elif o.status == 'shipped' %}
+          <span class="badge bg-info">Shipped</span>
+        {% else %}
+          <span class="badge bg-warning text-dark">Processing</span>
+        {% endif %}
+      </td>
+      <td>{{ o.created_at }}</td>
+      <td><a class="btn btn-sm btn-outline-primary" href="{% url 'admin_panel:order_detail' o.id %}">View</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

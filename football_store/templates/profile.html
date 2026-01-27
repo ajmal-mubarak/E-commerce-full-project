@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body_class %}profile-page{% endblock %}
+
+{% block content %}
+<div class="profile-container-main mt-5 py-4">
+    <!-- Mobile Menu Toggle -->
+    <button class="profile-menu-toggle" id="mobileMenuToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar Navigation -->
+    <div class="profile-sidebar" id="profileSidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="sidebar-user-info">
+                <h4>{{ user.get_full_name|default:user.username }}</h4>
+                <p>@{{ user.username }}</p>
+            </div>
+            <button class="sidebar-close" id="sidebarClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-menu">
+            <button class="menu-item active" data-tab="user-info">
+                <i class="fas fa-user me-2"></i>User Information
+            </button>
+            <button class="menu-item" data-tab="security">
+                <i class="fas fa-lock me-2"></i>Security & Password
+            </button>
+            <button class="menu-item" data-tab="addresses">
+                <i class="fas fa-map-marker-alt me-2"></i>Address Management
+            </button>
+        </nav>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="profile-main-content">
+        <!-- User Information Tab -->
+        <div class="profile-tab active" id="tab-user-info">
+            <div class="tab-header">
+                <h2>User Information</h2>
+                <p>Manage your personal details</p>
+            </div>
+
+            <div class="profile-form-group">
+                <div class="form-field">
+                    <label>Username</label>
+                    <input type="text" class="profile-input readonly-field" value="{{ user.username }}" readonly>
+                </div>
+
+                <div class="form-field">
+                    <label>Email Address</label>
+                    <input type="email" class="profile-input readonly-field" value="{{ user.email }}" readonly>
+                </div>
+
+                <button class="btn-edit-profile" id="editProfileBtn">
+                    <i class="fas fa-edit me-2"></i>Edit Profile
+                </button>
+            </div>
+        </div>
+
+        <!-- Security Tab -->
+        <div class="profile-tab" id="tab-security">
+            <div class="tab-header">
+                <h2>Security & Password</h2>
+                <p>Keep your account secure</p>
+            </div>
+
+            <div class="security-section">
+                <div class="security-item">
+                    <div class="security-info">
+                        <h4>Password</h4>
+                        <p>Change your password regularly to keep your account secure</p>
+                    </div>
+                    <button class="btn-action" id="changePasswordBtn">
+                        <i class="fas fa-key me-2"></i>Change Password
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Addresses Tab -->
+        <div class="profile-tab" id="tab-addresses">
+            <div class="tab-header">
+                <h2>Address Management</h2>
+                <p>Manage your saved delivery addresses</p>
+            </div>
+
+            <div class="addresses-section">
+                {% for type in address_types %}
+                    <div class="address-card mt-3">
+                        <div class="address-card-header">
+                            {% if type == 'home' %}
+                                <h4><i class="fas fa-home me-2"></i>Home Address</h4>
+                            {% elif type == 'work' %}
+                                <h4><i class="fas fa-briefcase me-2"></i>Work Address</h4>
+                            {% endif %}
+                        </div>
+
+                        <div class="address-card-body" data-address-type="{{ type }}">
+                            {% for addr in addresses %}
+                                {% if addr.address_type == type %}
+                                    <div class="address-display">
+                                        <p><strong>{{ addr.full_name }}</strong></p>
+                                        <p>{{ addr.address }}</p>
+                                        <p>{{ addr.city }} - {{ addr.pincode }}</p>
+                                        <p>{{ addr.phone }}</p>
+                                        <button class="btn-edit-address" onclick="openAddressModal('{{ type }}', 'edit')">
+                                            <i class="fas fa-edit me-1"></i>Edit
+                                        </button>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+
+                            <div class="address-empty-placeholder">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <p>No address saved yet</p>
+                                <button class="btn-add-address" onclick="openAddressModal('{{ type }}', 'add')">
+                                    <i class="fas fa-plus me-1"></i>Add Address
+                                </button>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Profile -->
+<div class="profile-modal" id="editProfileModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Profile</h3>
+            <button class="modal-close" onclick="closeModal('editProfileModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form method="POST" class="modal-form">
+            {% csrf_token %}
+            <input type="hidden" name="update_profile">
+
+            <div class="form-group-modal">
+                <label>Username</label>
+                <input type="text" name="username" class="input-modal" value="{{ user.username }}" required>
+            </div>
+
+            <div class="form-group-modal">
+                <label>Email Address</label>
+                <input type="email" name="email" class="input-modal" value="{{ user.email }}" required>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('editProfileModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Change Password -->
+<div class="profile-modal" id="changePasswordModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Change Password</h3>
+            <button class="modal-close" onclick="closeModal('changePasswordModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form method="POST" class="modal-form">
+            {% csrf_token %}
+            <input type="hidden" name="change_password">
+
+            <div class="form-group-modal">
+                <label>Current Password</label>
+                <input type="password" name="current_password" class="input-modal" placeholder="Enter current password" required>
+            </div>
+
+            <div class="form-group-modal">
+                <label>New Password</label>
+                <input type="password" name="new_password" class="input-modal" minlength="8" placeholder="Minimum 8 characters" required>
+            </div>
+
+            <div class="form-group-modal">
+                <label>Confirm Password</label>
+                <input type="password" name="confirm_new_password" class="input-modal" minlength="8" placeholder="Confirm new password" required>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('changePasswordModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Update Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Address Management -->
+<div class="profile-modal" id="addressModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="addressModalTitle">Add Address</h3>
+            <button class="modal-close" onclick="closeModal('addressModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form method="POST" class="modal-form" id="addressForm">
+            {% csrf_token %}
+            <input type="hidden" name="save_address">
+            <input type="hidden" name="address_type" id="addressType">
+
+            <div class="form-group-modal">
+                <label>Full Name</label>
+                <input type="text" name="full_name" class="input-modal" placeholder="Full Name" required>
+            </div>
+
+            <div class="form-group-modal">
+                <label>Phone Number</label>
+                <input type="text" name="phone" class="input-modal" pattern="[0-9]{10}" minlength="10" maxlength="10" placeholder="Phone (10 digits)" required>
+            </div>
+
+            <div class="form-group-modal">
+                <label>Address</label>
+                <textarea name="address" class="input-modal" placeholder="Enter your address" required></textarea>
+            </div>
+
+            <div class="form-group-modal">
+                <label>City</label>
+                <input type="text" name="city" class="input-modal" placeholder="City" required>
+            </div>
+
+            <div class="form-group-modal">
+                <label>Pincode</label>
+                <input type="text" name="pincode" class="input-modal" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="Pincode (6 digits)" required>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('addressModal')">Cancel</button>
+                <button type="submit" class="btn-submit">Save Address</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Tab Switching
+document.querySelectorAll('.menu-item').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tabName = this.getAttribute('data-tab');
+        switchTab(tabName);
+    });
+});
+
+function switchTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.profile-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active from all menu items
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+    
+    // Mark menu item as active
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    
+    // Close sidebar on mobile
+    document.getElementById('profileSidebar').classList.remove('active');
+}
+
+// Mobile Menu
+document.getElementById('mobileMenuToggle').addEventListener('click', function() {
+    document.getElementById('profileSidebar').classList.add('active');
+});
+
+document.getElementById('sidebarClose').addEventListener('click', function() {
+    document.getElementById('profileSidebar').classList.remove('active');
+});
+
+// Modal Functions
+document.getElementById('editProfileBtn').addEventListener('click', function() {
+    document.getElementById('editProfileModal').classList.add('active');
+});
+
+document.getElementById('changePasswordBtn').addEventListener('click', function() {
+    document.getElementById('changePasswordModal').classList.add('active');
+});
+
+function openAddressModal(type, action) {
+    const modal = document.getElementById('addressModal');
+    const titleEl = document.getElementById('addressModalTitle');
+    const typeInput = document.getElementById('addressType');
+    const form = document.getElementById('addressForm');
+    
+    typeInput.value = type;
+    
+    if (action === 'add') {
+        titleEl.textContent = `Add ${type.charAt(0).toUpperCase() + type.slice(1)} Address`;
+        form.reset();
+    } else {
+        titleEl.textContent = `Edit ${type.charAt(0).toUpperCase() + type.slice(1)} Address`;
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function() {
+        this.closest('.profile-modal').classList.remove('active');
+    });
+});
+
+// Close modals on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.profile-modal.active').forEach(modal => {
+            modal.classList.remove('active');
+        });
+    }
+});
+
+// Handle Address Cards Visibility per Type
+function updateAddressCardVisibility() {
+    document.querySelectorAll('.address-card-body').forEach(cardBody => {
+        const addressType = cardBody.getAttribute('data-address-type');
+        const addressDisplay = cardBody.querySelector('.address-display');
+        const emptyPlaceholder = cardBody.querySelector('.address-empty-placeholder');
+        
+        if (addressDisplay) {
+            // Address exists for this type - hide empty placeholder
+            if (emptyPlaceholder) emptyPlaceholder.style.display = 'none';
+        } else {
+            // No address for this type - show empty placeholder
+            if (emptyPlaceholder) emptyPlaceholder.style.display = 'block';
+        }
+    });
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateAddressCardVisibility();
+});
+
+// Also run after form submission (will reload page anyway)
+document.getElementById('addressForm').addEventListener('submit', function() {
+    setTimeout(updateAddressCardVisibility, 500);
+});
+</script>
+
+{% endblock %}

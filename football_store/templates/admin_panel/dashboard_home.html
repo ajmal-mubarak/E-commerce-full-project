@@ -1,0 +1,44 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1 class="h3">Dashboard</h1>
+<div class="row gy-3">
+  <div class="col-md-3">
+    <div class="card p-3">
+      <h5>Products</h5>
+      <h3>{{ total_products }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3">
+      <h5>Orders</h5>
+      <h3>{{ total_orders }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3">
+      <h5>Users</h5>
+      <h3>{{ total_users }}</h3>
+    </div>
+  </div>
+</div>
+
+<h4 class="mt-4">Recent Orders</h4>
+<table class="table">
+  <thead>
+    <tr><th>ID</th><th>User</th><th>Total</th><th>Status</th><th>Ordered At</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for o in recent_orders %}
+    <tr>
+      <td>{{ o.id }}</td>
+      <td>{{ o.user.username }}</td>
+      <td>₹{{ o.total_amount }}</td>
+      <td>{{ o.status }}</td>
+      <td>{{ o.created_at }}</td>
+      <td><a href="{% url 'admin_panel:order_detail' o.id %}" class="btn btn-sm btn-outline-primary">View</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

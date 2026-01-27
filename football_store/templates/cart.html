@@ -1,0 +1,417 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cart | Football Shop{% endblock %}
+
+{% block content %}
+
+
+
+<div class="container cart-container">
+
+    {% if not cart_items %}
+    <div class="empty-state">
+        <img src="{% static 'images/emptycart.png' %}" alt="Empty Cart">
+        <h2>Your cart is empty</h2>
+        <p>Add some products to get started</p>
+        <a href="{% url 'products' %}" class="shop-btn">Shop Now →</a>
+    </div>
+
+    {% else %}
+
+    <div class="cart-header">
+        <h1>Shopping Cart</h1>
+        <span class="badge">{{ cart_items|length }} item{{ cart_items|length|pluralize }}</span>
+    </div>
+
+    <div class="cart-wrapper">
+        <!-- CART ITEMS -->
+        <div class="cart-items-section">
+            {% for item in cart_items %}
+            <div class="cart-item" id="cart-item-{{ item.id }}">
+                <img src="{{ item.product.main_image.url }}" alt="{{ item.product.name }}" class="item-image">
+
+                <div class="item-details">
+                    <div class="item-name">{{ item.product.name }}</div>
+                    <div class="item-price">₹{{ item.product.price }}</div>
+                    
+                    {% if item.product.sizes.all %}
+                    <div class="item-size" style="font-size: 0.9rem; color: #666; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                        <span>Size:</span>
+                        <select class="form-select form-select-sm" style="width: auto; max-width: 100px;" data-item-id="{{ item.id }}" onchange="updateSize(this, {{ item.id }})">
+                            <option value="" disabled>Select Size</option>
+                            {% for size in item.product.sizes.all %}
+                            <option value="{{ size.size }}" {% if item.size == size.size %}selected{% endif %}>{{ size.size }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% elif item.size %}
+                    <div class="item-size" style="font-size: 0.9rem; color: #666; margin-bottom: 8px;">
+                        Size: <strong>{{ item.size }}</strong>
+                    </div>
+                    {% endif %}
+
+                    <div class="item-actions">
+                        <div class="qty-control">
+                            <button type="button" class="qty-btn" data-action="minus"
+                                data-item-id="{{ item.id }}">−</button>
+                            <input type="number" class="cart-qty" value="{{ item.quantity }}"
+                                data-item-id="{{ item.id }}" readonly>
+                            <button type="button" class="qty-btn" data-action="plus"
+                                data-item-id="{{ item.id }}">+</button>
+                        </div>
+                        <button type="button" class="remove-btn remove-cart-btn"
+                            data-item-id="{{ item.id }}">Remove</button>
+                    </div>
+                </div>
+
+                <div class="item-subtotal" id="item-total-{{ item.id }}">₹{{ item.subtotal }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- CART SUMMARY -->
+        <div class="cart-summary">
+            <div class="summary-title">Order Summary</div>
+
+            <!-- DELIVERY INFO BADGE -->
+            <div style="background: #f0f7f0; border: 1px solid #90ee90; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; text-align: center;">
+                <span style="font-size: 16px;">🚚</span>
+                <div style="width: 100%; text-align: left;">
+                    <div style="font-size: 11px; color: #666; margin-bottom: 2px;">FREE DELIVERY</div>
+                    <div style="font-weight: 600; color: #1e7e34; font-size: 13px;" id="cartDeliveryDate">Delivery by Feb 03, 2026</div>
+                </div>
+            </div>
+            <script>
+                // Calculate delivery date (7 days from today)
+                const cartToday = new Date();
+                const cartDeliveryDate = new Date(cartToday.getTime() + (7 * 24 * 60 * 60 * 1000));
+                const cartOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+                document.getElementById('cartDeliveryDate').textContent = 'Delivery by ' + cartDeliveryDate.toLocaleDateString('en-US', cartOptions);
+            </script>
+
+            <!-- COUPON SECTION -->
+            <div class="coupon-section">
+                <label class="coupon-label">Apply Coupon</label>
+                <form method="POST" action="{% url 'apply_coupon' %}" style="display: contents;">
+                    {% csrf_token %}
+                    <div class="coupon-input-group">
+                        <input type="text" name="coupon_code" placeholder="Enter code" required>
+                        <button type="submit">Apply</button>
+                    </div>
+                </form>
+
+                {% if coupon_error %}
+                <div class="coupon-error">
+                    <i class="fa fa-exclamation-circle"></i>
+                    <span>{{ coupon_error }}</span>
+                </div>
+                {% endif %}
+
+                {% if coupon %}
+                <div class="applied-coupon">
+                    <span class="code">✓ {{ coupon.code }}</span>
+                    <form method="POST" action="{% url 'remove_coupon' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="remove-link">Remove</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            <!-- TOTALS -->
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <span>₹<span id="cart-subtotal">{{ subtotal }}</span></span>
+            </div>
+
+            {% if coupon %}
+            <div class="summary-row discount">
+                <span>Discount</span>
+                <span>- ₹{{ discount|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+
+            <div class="summary-row total">
+                <span>Total</span>
+                <span>₹{{ total|floatformat:2 }}</span>
+            </div>
+
+            <!-- CHECKOUT BUTTON -->
+            <a href="javascript:void(0)" onclick="validateAndCheckout(event)" class="checkout-btn">Proceed to Checkout</a>
+        </div>
+    </div>
+
+    {% endif %}
+
+</div>
+
+<script>
+    // Validate sizes before checkout
+    function validateAndCheckout(event) {
+        event.preventDefault();
+        
+        const cartItems = document.querySelectorAll('.cart-item');
+        let allSizesSelected = true;
+        
+        cartItems.forEach(item => {
+            const sizeSelect = item.querySelector('select[data-item-id]');
+            if (sizeSelect) {
+                const selectedSize = sizeSelect.value;
+                if (!selectedSize) {
+                    allSizesSelected = false;
+                }
+            }
+        });
+        
+        if (!allSizesSelected) {
+            showSizeRequiredToast();
+            return false;
+        }
+        
+        // All sizes selected, proceed to checkout
+        window.location.href = "{% url 'checkout' %}";
+    }
+    
+    function showSizeRequiredToast() {
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-danger alert-dismissible fade show';
+        toast.style.position = 'fixed';
+        toast.style.top = '80px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '9999';
+        toast.style.minWidth = '320px';
+        toast.style.maxWidth = '420px';
+        toast.innerHTML = `
+            <i class="fa fa-exclamation-circle"></i> <strong>Size required:</strong> Please select size for all items
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // Cart AJAX functionality
+    document.addEventListener('DOMContentLoaded', function () {
+        // Quantity buttons
+        document.querySelectorAll('.qty-btn').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const action = this.dataset.action;
+                const itemId = this.dataset.itemId;
+                const qtyInput = document.querySelector(`.cart-qty[data-item-id="${itemId}"]`);
+                let newQty = parseInt(qtyInput.value);
+
+                if (action === 'plus') {
+                    newQty += 1;
+                } else if (action === 'minus' && newQty > 1) {
+                    newQty -= 1;
+                } else {
+                    return;
+                }
+
+                updateQuantity(itemId, newQty);
+            });
+        });
+
+        // Remove button
+        document.querySelectorAll('.remove-cart-btn').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const itemId = this.dataset.itemId;
+                removeFromCart(itemId);
+            });
+        });
+    });
+
+    function updateQuantity(itemId, newQty) {
+        fetch(`/cart/update-item/${itemId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                quantity: newQty
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update quantity input
+                    document.querySelector(`.cart-qty[data-item-id="${itemId}"]`).value = newQty;
+
+                    // Update item subtotal
+                    document.getElementById(`item-total-${itemId}`).textContent = `₹${data.item_subtotal}`;
+
+                    // Update cart summary
+                    updateCartSummary(data);
+                } else {
+                    alert('Error updating quantity');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function removeFromCart(itemId) {
+        fetch(`/cart/remove-item/${itemId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove item from DOM
+                    const cartItem = document.getElementById(`cart-item-${itemId}`);
+                    cartItem.style.opacity = '0';
+                    cartItem.style.transition = 'opacity 0.3s ease';
+
+                    setTimeout(() => {
+                        cartItem.remove();
+
+                        // Update cart summary
+                        updateCartSummary(data);
+
+                        // If no items left, reload page to show empty state
+                        if (data.cart_count === 0) {
+                            setTimeout(() => location.reload(), 300);
+                        }
+                    }, 300);
+                } else {
+                    alert('Error removing item');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function updateCartSummary(data) {
+        // Update subtotal
+        const subtotalElement = document.getElementById('cart-subtotal');
+        if (subtotalElement) {
+            subtotalElement.textContent = data.subtotal.toFixed(2);
+        }
+
+        // Update discount row if coupon exists
+        const discountRow = document.querySelector('.summary-row.discount');
+        if (data.discount > 0 && discountRow) {
+            const discountValue = discountRow.querySelector('span:last-child');
+            if (discountValue) {
+                discountValue.textContent = `- ₹${data.discount.toFixed(2)}`;
+            }
+            discountRow.style.display = 'flex';
+        } else if (discountRow && data.discount === 0) {
+            discountRow.style.display = 'none';
+        }
+
+        // Update total - target the last span in the summary-row.total div
+        const totalRow = document.querySelector('.summary-row.total');
+        if (totalRow) {
+            const spans = totalRow.querySelectorAll('span');
+            if (spans.length >= 2) {
+                // Update the second span (the value)
+                spans[1].textContent = `₹${data.total.toFixed(2)}`;
+            }
+        }
+
+        // Update badge count
+        const badge = document.querySelector('.badge');
+        if (badge && data.cart_count !== undefined) {
+            const count = data.cart_count;
+            badge.textContent = `${count} item${count !== 1 ? 's' : ''}`;
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function updateSize(selectElement, itemId) {
+        const newSize = selectElement.value;
+        const csrfToken = getCookie('csrftoken');
+        
+        fetch(`/cart/update-size/${itemId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken,
+            },
+            body: `size=${encodeURIComponent(newSize)}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(`Size updated to ${newSize}`);
+                } else {
+                    showErrorToast(data.error || 'Error updating size');
+                    // Reset the select to previous value
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showErrorToast('Error updating size. Please try again.');
+                // Reset by reloading page on error
+                location.reload();
+            });
+    }
+
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-success alert-dismissible fade show';
+        toast.style.position = 'fixed';
+        toast.style.top = '80px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '9999';
+        toast.style.minWidth = '300px';
+        toast.innerHTML = `
+            <i class="fa fa-check-circle"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function showErrorToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-danger alert-dismissible fade show';
+        toast.style.position = 'fixed';
+        toast.style.top = '80px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '9999';
+        toast.style.minWidth = '300px';
+        toast.innerHTML = `
+            <i class="fa fa-exclamation-circle"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 2000);
+    }
+</script>
+
+{% endblock %}

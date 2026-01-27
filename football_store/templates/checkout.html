@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container checkout-container py-5 pt-5 mt-5">
+
+    <div class="row g-4">
+
+        <!-- RIGHT: Order Summary -->
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h4 class="fw-bold mb-3">Order Summary</h4>
+
+                {% for item in cart_items %}
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+
+                    <img src="{{ item.product.main_image.url }}" class="rounded border"
+                        style="width:60px; height:60px; object-fit:cover;">
+
+                    <div class="ms-3 flex-grow-1">
+                        <p class="mb-0 fw-semibold">{{ item.product.name }}</p>
+                        <small class="text-muted">Qty: {{ item.quantity }}</small><br>
+                        {% if item.size %}<small class="text-muted">Size: <strong>{{ item.size }}</strong></small><br>{% endif %}
+                        <small class="text-muted">Price: ₹{{ item.product.price|floatformat:2 }}</small>
+                    </div>
+
+                    <p class="text-danger fw-bold mb-0">
+                        ₹{{ item.subtotal|floatformat:2 }}
+                    </p>
+                </div>
+                {% endfor %}
+
+                <hr>
+
+                <table class="table">
+                    <tr>
+                        <td>Subtotal</td>
+                        <td>₹{{ subtotal }}</td>
+                    </tr>
+
+                    {% if coupon %}
+                    <tr class="text-success">
+                        <td>Coupon ({{ coupon.code }})</td>
+                        <td>- ₹{{ discount|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+
+                    <tr class="fw-bold">
+                        <td>Total Payable</td>
+                        <td>₹{{ total|floatformat:2 }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- LEFT: Address -->
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h4 class="mb-3 fw-bold">Shipping Details</h4>
+
+                <form method="POST" id="checkout-form">
+                    {% csrf_token %}
+
+                    {% if addresses %}
+                    <h6 class="fw-semibold mb-2">Select Saved Address</h6>
+
+                    {% for addr in addresses %}
+                    <div class="border rounded p-3 mb-2">
+                        <label class="w-100">
+                            <input type="radio" name="address_choice" value="{{ addr.id }}" class="me-2 address-radio"
+                                {% if addr.address_type == "home" %}checked{% endif %}>
+
+                            <strong>{{ addr.address_type|title }}</strong><br>
+                            {{ addr.full_name }}<br>
+                            {{ addr.address }}, {{ addr.city }} - {{ addr.pincode }}<br>
+                            {{ addr.phone }}
+                        </label>
+                    </div>
+                    {% endfor %}
+
+                    <div class="border rounded p-3 mb-3">
+                        <label>
+                            <input type="radio" name="address_choice" value="new" class="me-2 address-radio">
+                            <strong>Add New Address</strong>
+                        </label>
+                    </div>
+
+                    {% else %}
+                    <!-- No saved address, show new form by default -->
+                    <input type="hidden" name="address_choice" value="new">
+                    {% endif %}
+
+                    <!-- NEW ADDRESS FORM -->
+                    <div id="new-address-form" style="display:none;">
+                        <input type="text" name="full_name" class="form-control mb-2" placeholder="Full Name" required>
+                        <input type="tel" name="phone" pattern="[0-9]{10}" minlength="10" maxlength="10"
+                            class="form-control mb-2" placeholder="Phone Number" required>
+                        <textarea name="address" class="form-control mb-2" placeholder="Address" required></textarea>
+                        <input type="text" name="city" class="form-control mb-2" placeholder="City" required>
+                        <input type="number" name="pincode" pattern="[0-9]{6}" minlength="6" maxlength="6"
+                            class="form-control mb-2" placeholder="Pincode" required>
+                    </div>
+
+                    <hr>
+                    <h5 class="fw-bold mt-4">Payment Method</h5>
+
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="radio" name="payment_method" value="COD" checked>
+                        <label class="form-check-label">
+                            Cash on Delivery
+                        </label>
+                    </div>
+
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="radio" name="payment_method" value="SIMULATED" disabled>
+                        <label class="form-check-label">
+                            Online Payment (UPI / Card) (Not Completed! Working on it)
+                        </label>
+                    </div>
+
+                    <div class="alert alert-info mt-3" style="font-size:14px;">
+                        <strong>Demo Mode:</strong> Online payments are simulated for project purposes.
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mt-4" id="place-order-btn">
+                        Place Order (COD)
+                    </button>
+
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const newForm = document.getElementById('new-address-form');
+        const placeBtn = document.getElementById('place-order-btn');
+        const addressRadios = document.querySelectorAll('input[name="address_choice"]');
+
+        if (!newForm || !placeBtn) return;
+
+        const newInputs = newForm.querySelectorAll('input, textarea');
+
+        function getSelectedAddress() {
+            return document.querySelector('input[name="address_choice"]:checked')
+                || document.querySelector('input[name="address_choice"][type="hidden"]');
+        }
+
+        function toggleNewForm() {
+            const selected = getSelectedAddress();
+
+            if (selected && selected.value === 'new') {
+                newForm.style.display = 'block';
+                newInputs.forEach(i => i.required = true);
+            } else {
+                newForm.style.display = 'none';
+                newInputs.forEach(i => i.required = false);
+            }
+
+            validateOrder();
+        }
+
+        function validateOrder() {
+            const selected = getSelectedAddress();
+
+            if (!selected) {
+                placeBtn.disabled = true;
+                return;
+            }
+
+            if (selected.value === 'new') {
+                let valid = true;
+                newInputs.forEach(i => {
+                    if (!i.value.trim()) valid = false;
+                });
+                placeBtn.disabled = !valid;
+            } else {
+                placeBtn.disabled = false;
+            }
+        }
+
+        // Radio change
+        addressRadios.forEach(radio => {
+            radio.addEventListener('change', toggleNewForm);
+        });
+
+        // New address typing
+        newInputs.forEach(input => {
+            input.addEventListener('input', validateOrder);
+        });
+
+        // Init
+        toggleNewForm();
+    });
+</script>
+{% endblock %}

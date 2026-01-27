@@ -1,0 +1,27 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block content %}
+<div class="d-flex justify-content-between">
+  <h3>Users</h3>
+</div>
+<table class="table">
+  <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Staff</th><th>Active</th><th></th></tr></thead>
+  <tbody>
+  {% for u in users %}
+    <tr>
+      <td>{{ u.id }}</td>
+      <td>{{ u.username }}</td>
+      <td>{{ u.email }}</td>
+      <td>{{ u.is_staff }}</td>
+      <td>{{ u.is_active }}</td>
+      <td>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'admin_panel:user_edit' u.id %}">Edit</a>
+        <form action="{% url 'admin_panel:user_delete' u.id %}" method="post" style="display:inline;">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete user?')">Delete</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

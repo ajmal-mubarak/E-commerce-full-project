@@ -1,0 +1,652 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block content %}
+
+</style>
+<style>
+/* ========== PRODUCT GALLERY ========== */
+.product-gallery {
+    display: flex;
+    gap: 15px;
+}
+
+.thumb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.thumb {
+    width: 70px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.thumb:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.2);
+}
+
+.thumb.active {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 12px rgba(13, 110, 253, 0.3);
+}
+
+/* ========== MAIN IMAGE CONTAINER ========== */
+.main-image-box {
+    border-radius: 12px;
+    overflow: visible;
+    border: 1px solid #ddd;
+    position: relative;
+    background: #f9f9f9;
+    width: 100%;
+    aspect-ratio: 1;
+}
+
+#mainImage {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    cursor: zoom-in;
+    display: block;
+    transition: transform 0.3s ease;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* ========== ZOOM PREVIEW BOX ========== */
+.zoom-preview-box {
+    position: absolute;
+    right: -680px;
+    top: 0;
+    width: 650px;
+    height: 500px;
+    border: 3px solid #0d6efd;
+    border-radius: 8px;
+    background: white;
+    overflow: hidden;
+    display: none;
+    z-index: 20;
+    box-shadow: 0 4px 20px rgba(13, 110, 253, 0.3);
+}
+
+.zoom-preview-box.active {
+    display: block;
+}
+
+.zoom-preview-img {
+    width: 120%;
+    height: 120%;
+    object-fit: contain;
+}
+
+/* ========== ZOOM MAGNIFIER GLASS ========== */
+.magnifier-glass {
+    display: none;
+    position: absolute;
+    border: 2px solid #0d6efd;
+    width: 120px;
+    height: 120px;
+    box-shadow: inset 0 0 0 1px #0d6efd;
+    z-index: 15;
+    background: rgba(13, 110, 253, 0.1);
+    cursor: crosshair;
+    pointer-events: none;
+}
+
+.magnifier-glass.active {
+    display: block;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1200px) {
+    .zoom-preview-box {
+        right: -350px;
+        width: 350px;
+        height: 350px;
+    }
+    
+    .magnifier-glass {
+        width: 110px;
+        height: 110px;
+    }
+}
+
+@media (max-width: 992px) {
+    .zoom-preview-box {
+        position: fixed;
+        right: 10px;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: auto;
+        height: 350px;
+        z-index: 100;
+    }
+}
+
+@media (max-width: 768px) {
+    .product-gallery {
+        flex-direction: column;
+    }
+    
+    .row {
+        text-align: left;
+    }
+    
+    .thumb-list {
+        flex-direction: row;
+        order: 2;
+        margin-top: 10px;
+    }
+    
+    .main-image-box {
+        order: 1;
+    }
+    
+    .zoom-preview-box {
+        position: fixed;
+        right: 10px;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: auto;
+        height: 300px;
+        display: none !important;
+    }
+    
+    .zoom-preview-box.active {
+        display: block !important;
+    }
+    
+    .magnifier-glass {
+        width: 80px;
+        height: 80px;
+    }
+    
+    #mainImage {
+        cursor: zoom-in;
+        touch-action: manipulation;
+    }
+}
+
+@media (max-width: 480px) {
+    .zoom-preview-box {
+        height: 250px;
+    }
+    
+    .magnifier-glass {
+        width: 70px;
+        height: 70px;
+    }
+}
+
+/* ========== MODAL ZOOM ========== */
+.zoom-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    animation: fadeIn 0.3s ease;
+}
+
+.zoom-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zoom-modal-content {
+    position: relative;
+    width: 90%;
+    max-width: 800px;
+    height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zoom-modal-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.zoom-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    font-size: 32px;
+    color: white;
+    cursor: pointer;
+    transition: color 0.2s;
+    background: none;
+    border: none;
+    z-index: 10000;
+}
+
+.zoom-modal-close:hover {
+    color: #0d6efd;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Wishlist Icon Styling */
+.wishlist-icon {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: white;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+}
+
+.wishlist-icon:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
+}
+
+.wishlist-icon i {
+    transition: all 0.3s ease;
+}
+
+.wishlist-icon.active i {
+    animation: heartBeat 0.6s ease;
+}
+
+@keyframes heartBeat {
+    0% { transform: scale(1); }
+    25% { transform: scale(1.3); }
+    50% { transform: scale(1.1); }
+    75% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+/* Dark mode support */
+body.dark-mode .wishlist-icon {
+    background: rgba(26, 26, 46, 0.9);
+    color: #ff6b7a;
+}
+</style>
+</style>
+
+<div class="container mt-5 pt-5">
+
+<div class="row g-4">
+
+<!-- ================= LEFT: IMAGES ================= -->
+<div class="col-md-6">
+
+<div class="product-gallery">
+
+    <!-- Thumbnails -->
+    <div class="thumb-list">
+        {% if product.main_image %}
+        <img src="{{ product.main_image.url }}" class="thumb active" onclick="setMainImage(this)">
+        {% endif %}
+        {% for img in product.images.all %}
+        <img src="{{ img.image.url }}" class="thumb" onclick="setMainImage(this)">
+        {% endfor %}
+    </div>
+
+    <!-- Main Image -->
+    <div class="flex-fill">
+        <div class="main-image-box position-relative" id="mainImageBox">
+            <a href="javascript:void(0)"
+               class="wishlist-icon wishlist-btn"
+               data-product-id="{{ product.id }}"
+               id="wishlistBtn">
+                <i class="fa {% if product.id in wishlist_product_ids %}fa-heart{% else %}fa-heart-o{% endif %}"></i>
+            </a>
+
+            <img id="mainImage"
+                 src="{{ product.main_image.url }}"
+                 alt="{{ product.name }}">
+            
+            <!-- MAGNIFIER GLASS -->
+            <div id="magnifier" class="magnifier-glass"></div>
+            
+            <!-- ZOOM PREVIEW BOX (right side) -->
+            <div class="zoom-preview-box" id="zoomPreview">
+                <img id="zoomPreviewImg" class="zoom-preview-img" src="{{ product.main_image.url }}" alt="{{ product.name }}">
+            </div>
+        </div>
+    </div>
+
+
+</div>
+</div>
+
+<!-- ================= RIGHT: DETAILS ================= -->
+<div class="col-md-6">
+
+<p class="text-muted">Home / {{ product.get_category_display }}</p>
+
+<h2 class="fw-bold">{{ product.name }}</h2>
+<!-- Description -->
+<p>{{ product.description }}</p>
+<h4 class="text-danger">₹ {{ product.price }}</h4>
+
+<!-- Delivery Info Badge -->
+{% load tz %}
+{% now "Y-m-d" as today %}
+<div style="background: #f0f7f0; border: 1px solid #90ee90; border-radius: 8px; padding: 12px 16px; margin: 12px 0; display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 18px;">🚚</span>
+    <div>
+        <div style="font-size: 12px; color: #666; margin-bottom: 2px;">FREE DELIVERY</div>
+        <div style="font-weight: 600; color: #1e7e34; font-size: 14px;" id="deliveryDate">Delivery by Feb 03, 2026</div>
+    </div>
+</div>
+<script>
+    // Calculate delivery date (7 days from today)
+    const today = new Date();
+    const deliveryDate = new Date(today.getTime() + (7 * 24 * 60 * 60 * 1000));
+    const options = { month: 'short', day: 'numeric', year: 'numeric' };
+    document.getElementById('deliveryDate').textContent = 'Delivery by ' + deliveryDate.toLocaleDateString('en-US', options);
+</script>
+
+<!-- Size -->
+<div class="my-3">
+    <select id="sizeSelect" class="form-select w-50" name="size">
+        <option value="" disabled selected>Select Size</option>
+        {% for s in product.sizes.all %}
+        <option value="{{ s.size }}">{{ s.size }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<!-- Quantity -->
+<div class="d-flex align-items-center my-3">
+    <button class="btn btn-outline-secondary" onclick="qty(-1)">−</button>
+    <input id="qtyInput" value="1" class="form-control mx-2 text-center" style="width:60px" readonly>
+    <button class="btn btn-outline-secondary" onclick="qty(1)">+</button>
+</div>
+
+<!-- Cart -->
+<form method="POST" action="{% url 'add_to_cart' %}" class="add-to-cart-form" onsubmit="return validateAddToCart(event)">
+    {% csrf_token %}
+    <input type="hidden" name="product_id" value="{{ product.id }}">
+    <input type="hidden" name="size" id="formSize" value="">
+    <input type="hidden" name="quantity" id="cartQty">
+    <button type="submit" class="btn btn-primary w-100">Add to Cart</button>
+</form>
+
+<form method="POST" action="{% url 'buy_now' product.id %}" class="mt-2" onsubmit="return validateBuyNow(event)">
+    {% csrf_token %}
+    <input type="hidden" name="quantity" id="buyQty">
+    <input type="hidden" name="size" id="buySize" value="">
+    <button class="btn btn-danger w-100">Buy Now</button>
+</form>
+
+</div>
+</div>
+</div>
+
+<!-- ================= RELATED PRODUCTS ================= -->
+<div class="container my-5">
+<h3 class="fw-bold mb-3">Related Products</h3>
+
+<div class="row g-4">
+{% for item in related_products %}
+<div class="col-6 col-md-3">
+<a href="{% url 'product_details' item.slug %}" class="text-decoration-none">
+<div class="card shadow-sm h-100">
+<img src="{{ item.main_image.url }}" class="card-img-top">
+<div class="card-body text-center">
+<h6>{{ item.name }}</h6>
+<p class="text-danger fw-bold">₹ {{ item.price }}</p>
+</div>
+</div>
+</a>
+</div>
+{% endfor %}
+</div>
+</div>
+
+<!-- ================= ZOOM MODAL ================= -->
+<div class="modal fade" id="zoomModal" tabindex="-1">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content bg-black">
+      <div class="modal-body d-flex justify-content-center align-items-center">
+        <img id="zoomImage" class="img-fluid">
+      </div>
+      <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3"
+              data-bs-dismiss="modal"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Simple & Reliable Zoom Preview
+const mainImage = document.getElementById('mainImage');
+const mainImageBox = document.getElementById('mainImageBox');
+const magnifier = document.getElementById('magnifier');
+const zoomPreview = document.getElementById('zoomPreview');
+const zoomPreviewImg = document.getElementById('zoomPreviewImg');
+
+const ZOOM_LEVEL = 2.0;
+let isMobileDevice = window.innerWidth <= 768;
+
+// Detect device type
+function updateDeviceType() {
+    isMobileDevice = window.innerWidth <= 768;
+}
+
+window.addEventListener('resize', updateDeviceType);
+
+// Desktop zoom preview
+mainImage.addEventListener('mouseenter', function() {
+    if (!isMobileDevice) {
+        zoomPreview.classList.add('active');
+        magnifier.classList.add('active');
+    }
+});
+
+mainImage.addEventListener('mousemove', function(e) {
+    if (isMobileDevice) return;
+    
+    const rect = mainImageBox.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Only show if mouse is on the image
+    if (x < 0 || x > rect.width || y < 0 || y > rect.height) return;
+
+    // Update magnifier position
+    const magSize = 120;
+    let magX = Math.max(0, Math.min(x - magSize / 2, rect.width - magSize));
+    let magY = Math.max(0, Math.min(y - magSize / 2, rect.height - magSize));
+    
+    magnifier.style.left = magX + 'px';
+    magnifier.style.top = magY + 'px';
+
+    // Update preview zoom
+    const newWidth = rect.width * ZOOM_LEVEL;
+    const newHeight = rect.height * ZOOM_LEVEL;
+    
+    zoomPreviewImg.style.width = newWidth + 'px';
+    zoomPreviewImg.style.height = newHeight + 'px';
+    zoomPreviewImg.style.transform = `translate(${-magX * ZOOM_LEVEL}px, ${-magY * ZOOM_LEVEL}px)`;
+});
+
+mainImage.addEventListener('mouseleave', function() {
+    if (!isMobileDevice) {
+        magnifier.classList.remove('active');
+        zoomPreview.classList.remove('active');
+    }
+});
+
+// Mobile touch zoom
+let touchStartX = 0;
+let touchStartY = 0;
+let isTouching = false;
+
+mainImage.addEventListener('touchstart', function(e) {
+    isTouching = true;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    zoomPreview.classList.add('active');
+    magnifier.classList.add('active');
+}, { passive: true });
+
+mainImage.addEventListener('touchmove', function(e) {
+    if (!isTouching || !isMobileDevice) return;
+    
+    const rect = mainImageBox.getBoundingClientRect();
+    const x = e.touches[0].clientX - rect.left;
+    const y = e.touches[0].clientY - rect.top;
+
+    // Clamp to image bounds
+    if (x < 0 || x > rect.width || y < 0 || y > rect.height) {
+        isTouching = false;
+        return;
+    }
+
+    // Update magnifier position
+    const magSize = 80;
+    let magX = Math.max(0, Math.min(x - magSize / 2, rect.width - magSize));
+    let magY = Math.max(0, Math.min(y - magSize / 2, rect.height - magSize));
+    
+    magnifier.style.left = magX + 'px';
+    magnifier.style.top = magY + 'px';
+
+    // Update preview zoom
+    const newWidth = rect.width * ZOOM_LEVEL;
+    const newHeight = rect.height * ZOOM_LEVEL;
+    
+    zoomPreviewImg.style.width = newWidth + 'px';
+    zoomPreviewImg.style.height = newHeight + 'px';
+    zoomPreviewImg.style.transform = `translate(${-magX * ZOOM_LEVEL}px, ${-magY * ZOOM_LEVEL}px)`;
+}, { passive: true });
+
+mainImage.addEventListener('touchend', function() {
+    isTouching = false;
+    magnifier.classList.remove('active');
+    zoomPreview.classList.remove('active');
+}, { passive: true });
+
+// Image switching
+function setMainImage(img) {
+    mainImage.src = img.src;
+    zoomPreviewImg.src = img.src;
+    document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
+    img.classList.add('active');
+}
+
+// Quantity
+function qty(n) {
+    let q = document.getElementById("qtyInput");
+    q.value = Math.max(1, parseInt(q.value) + n);
+    document.getElementById("cartQty").value = q.value;
+    document.getElementById("buyQty").value = q.value;
+}
+
+// Update size in form
+document.getElementById("sizeSelect").addEventListener("change", function() {
+    document.getElementById("formSize").value = this.value;
+    document.getElementById("buySize").value = this.value;
+});
+
+function validateAddToCart(event) {
+    const selectedSize = document.getElementById("sizeSelect").value;
+    if (!selectedSize) {
+        event.preventDefault();
+        showSizeErrorToast();
+        return false;
+    }
+    document.getElementById("formSize").value = selectedSize;
+    return true;
+}
+
+function validateBuyNow(event) {
+    const selectedSize = document.getElementById("sizeSelect").value;
+    if (!selectedSize) {
+        event.preventDefault();
+        showSizeErrorToast();
+        return false;
+    }
+    document.getElementById("buySize").value = selectedSize;
+    return true;
+}
+
+function showSizeErrorToast() {
+    const toast = document.createElement('div');
+    toast.className = 'alert alert-danger alert-dismissible fade show';
+    toast.style.position = 'fixed';
+    toast.style.top = '80px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.style.minWidth = '300px';
+    toast.style.maxWidth = '400px';
+    toast.innerHTML = `
+        <i class="fa fa-exclamation-circle"></i> Size selection is required
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Full screen zoom
+function openZoomModal(src) {
+    const modal = document.getElementById('zoomModal');
+    document.getElementById('zoomImage').src = src;
+    modal.classList.add('active');
+}
+
+function closeZoomModal() {
+    document.getElementById('zoomModal').classList.remove('active');
+}
+
+// Close on ESC
+document.addEventListener('keydown', (e) => e.key === 'Escape' && closeZoomModal());
+
+// Click image to zoom (opens fullscreen modal)
+mainImage.addEventListener('click', function() {
+    openZoomModal(this.src);
+});
+
+qty(0);
+</script>
+
+<!-- FULL SCREEN ZOOM MODAL -->
+<div class="zoom-modal" id="zoomModal">
+    <button class="zoom-modal-close" onclick="closeZoomModal()">&times;</button>
+    <div class="zoom-modal-content">
+        <img class="zoom-modal-img" id="zoomImage" src="" alt="Product zoom">
+    </div>
+</div>
+
+{% endblock %}

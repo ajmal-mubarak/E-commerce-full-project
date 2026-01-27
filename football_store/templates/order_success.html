@@ -1,0 +1,706 @@
+{% extends 'base.html' %}
+
+{% block title %}Order Successful | Football Shop{% endblock %}
+
+{% block content %}
+<div class="order-success-wrapper mt-5 py-4">
+    <div class="order-success-container">
+        <!-- Success Animation Circle -->
+        <div class="success-circle-wrapper">
+            <div class="success-circle">
+                <svg class="checkmark" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+                    <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="success-content">
+            <h1 class="success-title">Order Successful!</h1>
+            <p class="success-subtitle">Thank you for your purchase</p>
+
+            <!-- Order Details Card -->
+            <div class="order-details-card">
+                <div class="detail-row">
+                    <span class="detail-label">Order ID:</span>
+                    <span class="detail-value">#{{ order.id }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Order Date:</span>
+                    <span class="detail-value">{{ order.created_at|date:"M d, Y" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total Amount:</span>
+                    <span class="detail-value total-amount">₹{{ order.total_amount|floatformat:2 }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Payment Method:</span>
+                    <span class="detail-value">{{ order.get_payment_method_display }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value status-badge status-{{ order.status }}">{{ order.get_status_display }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Expected Delivery:</span>
+                    <span class="detail-value">{{ order.get_expected_delivery_date|date:"M d, Y" }}</span>
+                </div>
+            </div>
+
+            <!-- Order Status Timeline -->
+            <div class="order-timeline">
+                <h3 class="timeline-title">Order Status Timeline</h3>
+                <div class="timeline-horizontal">
+                    <!-- Processing -->
+                    <div class="timeline-item {% if order.status != 'cancelled' %}completed{% endif %}">
+                        <div class="timeline-marker">
+                            <div class="timeline-dot"></div>
+                        </div>
+                        <div class="timeline-content">
+                            <h4>Processing</h4>
+                            {% for status_log in order.status_history.all %}
+                                {% if status_log.status == 'processing' %}
+                                    <p class="timeline-date">{{ status_log.changed_at|date:"M d, Y" }}</p>
+                                    <p class="timeline-time">{{ status_log.changed_at|time:"h:i A" }}</p>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Shipped -->
+                    <div class="timeline-item {% if order.status in 'shipped,delivered' %}completed{% endif %}">
+                        <div class="timeline-marker">
+                            <div class="timeline-dot"></div>
+                        </div>
+                        <div class="timeline-content">
+                            <h4>Shipped</h4>
+                            {% if order.shipped_date %}
+                                <p class="timeline-date">{{ order.shipped_date|date:"M d, Y" }}</p>
+                                <p class="timeline-time">{{ order.shipped_date|time:"h:i A" }}</p>
+                            {% else %}
+                                {% for status_log in order.status_history.all %}
+                                    {% if status_log.status == 'shipped' %}
+                                        <p class="timeline-date">{{ status_log.changed_at|date:"M d, Y" }}</p>
+                                        <p class="timeline-time">{{ status_log.changed_at|time:"h:i A" }}</p>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Delivered -->
+                    <div class="timeline-item {% if order.status == 'delivered' %}completed{% endif %}">
+                        <div class="timeline-marker">
+                            <div class="timeline-dot"></div>
+                        </div>
+                        <div class="timeline-content">
+                            <h4>Delivered</h4>
+                            {% for status_log in order.status_history.all %}
+                                {% if status_log.status == 'delivered' %}
+                                    <p class="timeline-date">{{ status_log.changed_at|date:"M d, Y" }}</p>
+                                    <p class="timeline-time">{{ status_log.changed_at|time:"h:i A" }}</p>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+            <!-- Delivery Address -->
+            <div class="delivery-info">
+                <h3 class="info-title">
+                    <i class="fa fa-map-marker"></i> Delivery Address
+                </h3>
+                <div class="address-box">
+                    <p><strong>{{ order.full_name }}</strong></p>
+                    <p>{{ order.address }}</p>
+                    <p>{{ order.city }}, {{ order.pincode }}</p>
+                    <p>{{ order.phone }}</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <a href="{% url 'my_orders' %}" class="btn btn-primary btn-lg">
+                    <i class="fa fa-list"></i> View My Orders
+                </a>
+                <a href="{% url 'products' %}" class="btn btn-outline-primary btn-lg">
+                    <i class="fa fa-shopping-bag"></i> Continue Shopping
+                </a>
+            </div>
+
+            <!-- Message -->
+            <div class="success-message">
+                <p>You will receive an email confirmation shortly. Track your order status in My Orders.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .order-success-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+    }
+
+    .order-success-container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 60px 40px;
+        max-width: 600px;
+        width: 100%;
+        animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Success Circle Animation */
+    .success-circle-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 30px;
+    }
+
+    .success-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #28a745, #20c997);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 30px rgba(40, 167, 69, 0.3);
+        animation: scaleIn 0.5s ease-out;
+    }
+
+    @keyframes scaleIn {
+        from {
+            transform: scale(0);
+        }
+        to {
+            transform: scale(1);
+        }
+    }
+
+    .checkmark {
+        width: 50px;
+        height: 50px;
+    }
+
+    .checkmark-circle {
+        stroke: white;
+        stroke-width: 2;
+        stroke-dasharray: 166;
+        stroke-dashoffset: 166;
+        animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards 0.3s;
+    }
+
+    .checkmark-check {
+        stroke: white;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-dasharray: 48;
+        stroke-dashoffset: 48;
+        animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) forwards 0.8s;
+    }
+
+    @keyframes stroke {
+        100% {
+            stroke-dashoffset: 0;
+        }
+    }
+
+    /* Content */
+    .success-content {
+        text-align: center;
+    }
+
+    .success-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #333;
+        margin: 0 0 10px 0;
+        animation: fadeInDown 0.6s ease-out 0.2s both;
+    }
+
+    .success-subtitle {
+        font-size: 1.1rem;
+        color: #666;
+        margin-bottom: 30px;
+        animation: fadeInDown 0.6s ease-out 0.3s both;
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Order Details Card */
+    .order-details-card {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 25px;
+        margin: 30px 0;
+        border-left: 4px solid #28a745;
+        animation: fadeIn 0.6s ease-out 0.4s both;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        font-weight: 600;
+        color: #555;
+        font-size: 0.95rem;
+    }
+
+    .detail-value {
+        color: #333;
+        font-weight: 500;
+    }
+
+    .total-amount {
+        font-size: 1.3rem;
+        color: #28a745;
+        font-weight: 700;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-processing {
+        background: #ffc107;
+        color: #000;
+    }
+
+    .status-shipped {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .status-delivered {
+        background: #28a745;
+        color: white;
+    }
+
+    .status-cancelled {
+        background: #dc3545;
+        color: white;
+    }
+
+    /* Delivery Info */
+    .delivery-info {
+        margin: 30px 0;
+        animation: fadeIn 0.6s ease-out 0.5s both;
+    }
+
+    .info-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .info-title i {
+        color: #28a745;
+        font-size: 1.3rem;
+    }
+
+    .address-box {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: left;
+    }
+
+    .address-box p {
+        margin: 8px 0;
+        color: #555;
+        font-size: 0.95rem;
+    }
+
+    .address-box p:first-child {
+        font-weight: 700;
+        color: #333;
+        font-size: 1.05rem;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        margin: 35px 0;
+        animation: fadeInUp 0.6s ease-out 0.6s both;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .btn-primary, .btn-outline-primary {
+        flex: 1;
+        padding: 12px 20px;
+        font-weight: 600;
+        font-size: 1rem;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        border: none;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+        color: white;
+    }
+
+    .btn-outline-primary {
+        background: white;
+        color: #667eea;
+        border: 2px solid #667eea;
+    }
+
+    .btn-outline-primary:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Success Message */
+    .success-message {
+        background: #d4edda;
+        border-left: 4px solid #28a745;
+        color: #155724;
+        padding: 15px;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        animation: fadeIn 0.6s ease-out 0.7s both;
+    }
+
+    .success-message p {
+        margin: 0;
+    }
+
+    /* Dark Mode Support */
+    body.dark-mode .order-success-wrapper {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+
+    body.dark-mode .order-success-container {
+        background: #2a2a3e;
+        color: #fff;
+    }
+
+    body.dark-mode .success-title,
+    body.dark-mode .success-subtitle {
+        color: #fff;
+    }
+
+    body.dark-mode .order-details-card {
+        background: #1a1a2e;
+        border-left-color: #20c997;
+    }
+
+    body.dark-mode .detail-label {
+        color: #aaa;
+    }
+
+    body.dark-mode .detail-value {
+        color: #fff;
+    }
+
+    body.dark-mode .address-box {
+        background: #1a1a2e;
+        border-color: #444;
+        color: #aaa;
+    }
+
+    body.dark-mode .address-box p:first-child {
+        color: #fff;
+    }
+
+    body.dark-mode .info-title {
+        color: #fff;
+    }
+
+    body.dark-mode .success-message {
+        background: rgba(32, 201, 151, 0.1);
+        border-left-color: #20c997;
+        color: #20c997;
+    }
+
+    /* Order Timeline */
+    .order-timeline {
+        margin: 40px 0;
+        padding: 30px;
+        background: #f9f9f9;
+        border-radius: 12px;
+        border-left: 4px solid #667eea;
+    }
+
+    body.dark-mode .order-timeline {
+        background: #1a1a2e;
+        border-left-color: #20c997;
+    }
+
+    .timeline-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 25px;
+        text-align: center;
+    }
+
+    body.dark-mode .timeline-title {
+        color: #fff;
+    }
+
+    .timeline-horizontal {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        position: relative;
+        padding: 0 10px;
+    }
+
+    /* Connecting line */
+    .timeline-horizontal::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #ddd;
+        z-index: 0;
+    }
+
+    body.dark-mode .timeline-horizontal::before {
+        background: #444;
+    }
+
+    .timeline-item {
+        flex: 1;
+        position: relative;
+        z-index: 1;
+        text-align: center;
+    }
+
+    .timeline-marker {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 15px;
+    }
+
+    .timeline-dot {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: white;
+        border: 3px solid #ddd;
+        position: relative;
+        z-index: 2;
+        transition: all 0.3s ease;
+    }
+
+    .timeline-item.completed .timeline-dot {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        border-color: #28a745;
+        box-shadow: 0 0 15px rgba(40, 167, 69, 0.3);
+    }
+
+    body.dark-mode .timeline-dot {
+        background: #2a2a3e;
+        border-color: #444;
+    }
+
+    body.dark-mode .timeline-item.completed .timeline-dot {
+        background: linear-gradient(135deg, #20c997, #00c853);
+        border-color: #20c997;
+    }
+
+    .timeline-content {
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        min-height: 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .timeline-item.completed .timeline-content {
+        background: rgba(40, 167, 69, 0.05);
+        border-color: #28a745;
+    }
+
+    body.dark-mode .timeline-content {
+        background: #1a1a2e;
+        border-color: #444;
+    }
+
+    body.dark-mode .timeline-item.completed .timeline-content {
+        background: rgba(32, 201, 151, 0.1);
+        border-color: #20c997;
+    }
+
+    .timeline-content h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    body.dark-mode .timeline-content h4 {
+        color: #fff;
+    }
+
+    .timeline-date {
+        margin: 5px 0 0 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #667eea;
+    }
+
+    body.dark-mode .timeline-date {
+        color: #20c997;
+    }
+
+    .timeline-time {
+        margin: 2px 0 0 0;
+        font-size: 0.85rem;
+        color: #999;
+    }
+
+    body.dark-mode .timeline-time {
+        color: #aaa;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .timeline-horizontal {
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .timeline-horizontal::before {
+            top: 0;
+            left: 20px;
+            width: 2px;
+            height: 100%;
+            background: #ddd;
+        }
+
+        .timeline-item {
+            padding-left: 60px;
+            text-align: left;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin: 0;
+        }
+
+        .timeline-content {
+            min-height: auto;
+        }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .order-success-container {
+            padding: 40px 25px;
+        }
+
+        .success-title {
+            font-size: 2rem;
+        }
+
+        .success-subtitle {
+            font-size: 1rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .order-details-card {
+            padding: 15px;
+        }
+
+        .detail-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+        }
+    }
+</style>
+{% endblock %}

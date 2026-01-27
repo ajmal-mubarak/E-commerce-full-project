@@ -1,0 +1,565 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Available Coupons | Football Shop{% endblock %}
+
+{% block content %}
+
+<style>
+    .coupons-container {
+        margin-top: 80px;
+        padding: 50px 0;
+        min-height: calc(100vh - 80px);
+        background: #f3f4f6;
+    }
+
+    .coupons-header {
+        text-align: center;
+        margin-bottom: 50px;
+    }
+
+    .coupons-header h1 {
+        font-size: 42px;
+        font-weight: 800;
+        color: #111827;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .coupons-header h1 i {
+        color: #4f46e5;
+    }
+
+    .coupons-header p {
+        font-size: 18px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .coupons-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 30px;
+        padding: 0 15px;
+    }
+
+    /* --- TICKET CARD DESIGN --- */
+    .coupon-card {
+        display: flex;
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        min-height: 180px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .coupon-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    /* LEFT SIDE - GRADIENT */
+    .coupon-left {
+        width: 35%;
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        text-align: center;
+        position: relative;
+    }
+
+    .coupon-card.applied .coupon-left {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    }
+
+    .coupon-card.disabled .coupon-left {
+        background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
+    }
+
+    .discount-val {
+        font-size: 32px;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 5px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .discount-label {
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.9;
+    }
+
+    /* SEPARATOR DOTS */
+    .coupon-left::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 0;
+        border-right: 2px dashed rgba(255, 255, 255, 0.3);
+    }
+
+    /* SEMI CIRCLES */
+    .coupon-card::before,
+    .coupon-card::after {
+        content: "";
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        background-color: #f3f4f6;
+        /* Needs to match body bg */
+        border-radius: 50%;
+        left: 35%;
+        transform: translateX(-50%);
+        z-index: 10;
+    }
+
+    .coupon-card::before {
+        top: -14px;
+    }
+
+    .coupon-card::after {
+        bottom: -14px;
+    }
+
+    /* RIGHT SIDE - CONTENT */
+    .coupon-right {
+        width: 65%;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        background: white;
+    }
+
+    .coupon-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+
+    .coupon-badge {
+        background: #eef2ff;
+        color: #4f46e5;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+        text-transform: uppercase;
+    }
+
+    .coupon-card.applied .coupon-badge {
+        background: #ecfdf5;
+        color: #059669;
+    }
+
+    .coupon-code-box {
+        background: #f8fafc;
+        border: 2px dashed #cbd5e1;
+        border-radius: 8px;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 15px;
+        transition: all 0.2s;
+    }
+
+    .coupon-code-box:hover {
+        border-color: #4f46e5;
+        background: #eef2ff;
+    }
+
+    .code-text {
+        font-family: 'Courier New', monospace;
+        font-weight: 700;
+        font-size: 18px;
+        color: #334155;
+        letter-spacing: 0.5px;
+    }
+
+    .copy-icon {
+        color: #94a3b8;
+        cursor: pointer;
+        transition: color 0.2s;
+        padding: 5px;
+    }
+
+    .copy-icon:hover {
+        color: #4f46e5;
+    }
+
+    .min-spend {
+        font-size: 13px;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 20px;
+    }
+
+    .action-area {
+        margin-top: auto;
+    }
+
+    .btn-apply {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #4f46e5;
+        color: white;
+        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+    }
+
+    .btn-apply:hover {
+        background: #4338ca;
+        transform: translateY(-1px);
+    }
+
+    .btn-remove {
+        background: #ef4444;
+        color: white;
+        box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .btn-remove:hover {
+        background: #dc2626;
+    }
+
+    .btn-disabled {
+        background: #e2e8f0;
+        color: #94a3b8;
+        cursor: not-allowed;
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        font-size: 14px;
+        box-shadow: none;
+    }
+
+    .filters {
+        margin-bottom: 30px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .filter-btn {
+        padding: 10px 24px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 50px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s;
+        color: #64748b;
+    }
+
+    .filter-btn:hover {
+        background: #f8fafc;
+        border-color: #4f46e5;
+        color: #4f46e5;
+    }
+
+    .filter-btn.active {
+        background: #4f46e5;
+        color: white;
+        border-color: #4f46e5;
+        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3);
+    }
+
+    /* --- DARK MODE --- */
+    body.dark-mode .coupons-container {
+        background: #111827 !important;
+    }
+
+    body.dark-mode .coupons-header h1 {
+        color: white;
+    }
+
+    body.dark-mode .coupons-header h1 i {
+        color: #818cf8;
+    }
+
+    body.dark-mode .coupon-card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    body.dark-mode .coupon-card::before,
+    body.dark-mode .coupon-card::after {
+        background-color: #111827;
+        /* Match dark body bg */
+    }
+
+    body.dark-mode .coupon-right {
+        background: #1f2937;
+    }
+
+    body.dark-mode .coupon-code-box {
+        background: #111827;
+        border-color: #374151;
+    }
+
+    body.dark-mode .coupon-code-box:hover {
+        border-color: #818cf8;
+        background: rgba(79, 70, 229, 0.1);
+    }
+
+    body.dark-mode .code-text {
+        color: #e2e8f0;
+    }
+
+    body.dark-mode .min-spend {
+        color: #9ca3af;
+    }
+
+    body.dark-mode .btn-disabled {
+        background: #374151;
+        color: #6b7280;
+    }
+
+    /* RESPONISVE */
+    @media (max-width: 640px) {
+        .coupons-container {
+            padding: 30px 0;
+        }
+
+        .coupons-content {
+            grid-template-columns: 1fr;
+        }
+
+        .coupon-card {
+            flex-direction: column;
+            min-height: auto;
+        }
+
+        .coupon-left {
+            width: 100%;
+            padding: 15px;
+            flex-direction: row;
+            justify-content: space-between;
+            text-align: left;
+        }
+
+        .coupon-left::after {
+            right: auto;
+            bottom: 0;
+            width: 100%;
+            height: 0;
+            border-right: none;
+            border-bottom: 2px dashed rgba(255, 255, 255, 0.3);
+        }
+
+        .coupon-card::before,
+        .coupon-card::after {
+            left: 0;
+            right: auto;
+            /* Reset */
+            transform: none;
+        }
+
+        /* Fix circles for vertical layout */
+        .coupon-card::before {
+            top: auto;
+            bottom: auto;
+            /* We need to position them at the cut of the vertical sections */
+            display: none;
+            /* Hard to do perfect circles on corners with this setup, simplifying for mobile */
+        }
+
+        .coupon-card::after {
+            display: none;
+        }
+
+        /* Alternative mobile cutouts */
+        .coupon-left {
+            mask: radial-gradient(circle at 0px 100%, transparent 10px, black 11px) bottom left,
+                radial-gradient(circle at 100% 100%, transparent 10px, black 11px) bottom right;
+            mask-composite: intersect;
+            /* This might not work everywhere so stick to CSS circles if possible or simple radius */
+            border-radius: 16px 16px 0 0;
+        }
+
+        .coupon-right {
+            width: 100%;
+            border-radius: 0 0 16px 16px;
+        }
+
+        .discount-val {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .discount-label {
+            font-size: 13px;
+        }
+    }
+</style>
+
+<div class="container coupons-container">
+
+    <div class="coupons-header">
+        <h1><i class="fa fa-ticket"></i> Available Coupons</h1>
+        <p>Grab your discount ticket today!</p>
+    </div>
+
+    {% if available_coupons %}
+
+    <div class="filters">
+        <button class="filter-btn active" onclick="filterCoupons('all', this)">All Tickets</button>
+        <button class="filter-btn" onclick="filterCoupons('eligible', this)">Available</button>
+        {% if applied_coupon %}
+        <button class="filter-btn" onclick="filterCoupons('applied', this)">Applied</button>
+        {% endif %}
+    </div>
+
+    <div class="coupons-content">
+        {% for coupon in available_coupons %}
+        <!-- TICKET CARD -->
+        <div class="coupon-card {% if not coupon.eligible %}disabled{% endif %} {% if applied_coupon.id == coupon.id %}applied{% endif %}"
+            data-filter="{% if coupon.eligible %}eligible{% else %}ineligible{% endif %} {% if applied_coupon.id == coupon.id %}applied{% endif %}">
+
+            <!-- LEFT: DISCOUNT -->
+            <div class="coupon-left">
+                <div class="discount-val">{{ coupon.discount_text }}</div>
+                <div class="discount-label">OFF</div>
+            </div>
+
+            <!-- RIGHT: INFO & ACTIONS -->
+            <div class="coupon-right">
+                <div class="coupon-top">
+                    <span class="coupon-badge">
+                        {% if applied_coupon.id == coupon.id %}
+                        APPLIED
+                        {% elif not coupon.eligible %}
+                        LOCKED
+                        {% else %}
+                        VALID
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="coupon-code-box">
+                    <span class="code-text">{{ coupon.code }}</span>
+                    <i class="fa fa-copy copy-icon" onclick="copyCoupon('{{ coupon.code }}', this)"></i>
+                </div>
+
+                {% if coupon.minimum_amount > 0 %}
+                <div class="min-spend">
+                    <i class="fa fa-info-circle"></i>
+                    Min Spend: ₹{{ coupon.minimum_amount }}
+                </div>
+                {% else %}
+                <div class="min-spend">
+                    <i class="fa fa-check-circle"></i>
+                    No Minimum Spend
+                </div>
+                {% endif %}
+
+                <div class="action-area">
+                    {% if applied_coupon.id == coupon.id %}
+                    <form method="POST" action="{% url 'remove_coupon' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-remove">Remove</button>
+                    </form>
+                    {% elif coupon.eligible %}
+                    <form method="POST" action="{% url 'apply_coupon' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="coupon_code" value="{{ coupon.code }}">
+                        <button type="submit" class="btn-apply">Apply Now</button>
+                    </form>
+                    {% else %}
+                    <button class="btn-disabled" disabled>Minimum ₹{{ coupon.minimum_amount }}</button>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <i class="fa fa-ticket" style="font-size: 80px; color: #d1d5db; margin-bottom: 20px;"></i>
+        <h2>No Coupons Available</h2>
+        <p>Check back later for new tickets!</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Keep existing script but update Selector logic slightly -->
+<script>
+    function copyCoupon(code, element) {
+        navigator.clipboard.writeText(code).then(function () {
+            // Change icon temporarily
+            element.classList.remove('fa-copy');
+            element.classList.add('fa-check');
+            element.style.color = '#10b981';
+
+            setTimeout(() => {
+                element.classList.add('fa-copy');
+                element.classList.remove('fa-check');
+                element.style.color = '';
+            }, 2000);
+        });
+    }
+
+    // Filter logic remains the same
+    function filterCoupons(type, btnElement) {
+        const cards = document.querySelectorAll('.coupon-card');
+        const btns = document.querySelectorAll('.filter-btn');
+
+        // Update active class
+        btns.forEach(btn => btn.classList.remove('active'));
+        if (btnElement) {
+            btnElement.classList.add('active');
+        }
+
+        cards.forEach(card => {
+            if (type === 'all') {
+                card.style.display = 'flex';
+            } else if (type === 'eligible') {
+                const isEligible = card.dataset.filter.includes('eligible') && !card.dataset.filter.includes('applied');
+                card.style.display = isEligible ? 'flex' : 'none';
+            } else if (type === 'applied') {
+                const isApplied = card.dataset.filter.includes('applied');
+                card.style.display = isApplied ? 'flex' : 'none';
+            }
+        });
+    }
+</script>
+
+
+{% endblock %}

@@ -1,0 +1,72 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Admin Panel - {% block title %}{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"rel="stylesheet">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="icon" type="image/png" href="{% static 'images/staffadmin_icon.png' %}">
+  <link rel="manifest" href="{% static 'admin_panel/manifest.json' %}">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    body { padding-top: 70px; }
+    .sidebar { min-width: 220px; max-width:220px; }
+    .card-sm { box-shadow: none; }
+    .thumb-small { width:60px; height:60px; object-fit:cover; border-radius:6px;}
+
+.admin-search {
+    display: flex;
+    width: 300px;
+}
+.admin-search input {
+    border: 1px solid #ccc;
+    padding: 6px 10px;
+}
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark fixed-top">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{% url 'admin_panel:dashboard_home' %}">Site Admin</a>
+    <div class="d-block">
+        <form method="GET" action="" class="admin-search d-none d-lg-flex ms-auto me-4">
+            <input type="text" name="q" placeholder="Search..." value="{{ request.GET.q }}" class="form-control" />
+            <button class="btn btn-primary ms-2"><i class="fa fa-search"></i></button>
+        </form>
+    </div>
+    <div class="d-flex">
+
+
+      <a class="btn btn-outline-light btn-sm me-2" href="/">View Site</a>
+      <a class="btn btn-outline-light btn-sm" href="{% url 'admin:logout' %}">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid">
+  <div class="row">
+    <aside class="col-auto sidebar p-3 bg-light">
+      <h6 class="text-muted">Manage</h6>
+      <ul class="nav nav-pills flex-column">
+        <li class="nav-item"><a class="nav-link" href="{% url 'admin_panel:dashboard_home' %}">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'admin_panel:products_list' %}">Products</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'admin_panel:orders_list' %}">Orders</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'admin_panel:users_list' %}">Users</a></li>
+      </ul>
+    </aside>
+
+    <main class="col px-4">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} mt-2">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>

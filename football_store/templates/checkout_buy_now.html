@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Checkout | Buy Now{% endblock %}
+
+{% block content %}
+<style>
+.checkout-container {
+    margin-top: 80px;
+    padding: 40px 0;
+    min-height: calc(100vh - 80px);
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+body.dark-mode .checkout-container {
+    background: linear-gradient(135deg, #232526 0%, #000 100%) !important;
+}
+.checkout-container .card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 4px 16px rgba(60,60,90,0.10);
+    background: #fff;
+    transition: box-shadow 0.3s, background 0.3s;
+}
+body.dark-mode .checkout-container .card {
+    background: #181818 !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.32);
+}
+.checkout-container .card:hover {
+    box-shadow: 0 8px 32px rgba(60,60,90,0.18);
+}
+body.dark-mode .checkout-container .card:hover {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.40);
+}
+.checkout-container .card h2, .checkout-container .card h4, .checkout-container .card h5 {
+    color: #0d6efd;
+    font-weight: 700;
+}
+body.dark-mode .checkout-container .card h2, body.dark-mode .checkout-container .card h4, body.dark-mode .checkout-container .card h5 {
+    color: #4aa3ff;
+}
+.checkout-container .border {
+    border-color: #e0e0e0 !important;
+    border-radius: 12px;
+    transition: all 0.2s;
+}
+body.dark-mode .checkout-container .border {
+    border-color: #232526 !important;
+}
+.checkout-container .border:hover {
+    background: #f9f9f9;
+    border-color: #0d6efd !important;
+}
+body.dark-mode .checkout-container .border:hover {
+    background: #222;
+    border-color: #4aa3ff !important;
+}
+.checkout-container .form-control {
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+.checkout-container .form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13,110,253,0.10);
+}
+body.dark-mode .checkout-container .form-control {
+    background: #222;
+    color: #e8e8e8;
+    border-color: #333;
+}
+body.dark-mode .checkout-container .form-control:focus {
+    border-color: #4aa3ff;
+    box-shadow: 0 0 0 3px rgba(74,163,255,0.10);
+}
+.checkout-container .btn-primary {
+    background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(13,110,253,0.10);
+    transition: all 0.2s;
+}
+.checkout-container .btn-primary:hover {
+    background: linear-gradient(135deg, #0b5ed7, #0a58ca);
+    box-shadow: 0 4px 16px rgba(13,110,253,0.18);
+    transform: translateY(-2px);
+}
+body.dark-mode .checkout-container .btn-primary {
+    background: linear-gradient(135deg, #4aa3ff, #0d6efd);
+}
+body.dark-mode .checkout-container .btn-primary:hover {
+    background: linear-gradient(135deg, #0d6efd, #4aa3ff);
+}
+.checkout-container .alert {
+    border-radius: 12px;
+    border: none;
+    background: #e7f3ff;
+    color: #004085;
+}
+body.dark-mode .checkout-container .alert {
+    background: #1b3a4a;
+    color: #4aa3ff;
+}
+.checkout-container table {
+    background: transparent;
+}
+.checkout-container table td {
+    color: #555;
+    font-weight: 500;
+    background: transparent;
+}
+body.dark-mode .checkout-container table td {
+    color: #b8b8b8;
+    background: transparent;
+}
+.checkout-container table tr {
+    background: transparent;
+}
+body.dark-mode .checkout-container table tr {
+    background: transparent;
+}
+.checkout-container .text-danger {
+    color: #ff6b6b !important;
+}
+.checkout-container .text-success {
+    color: #4caf50 !important;
+}
+body.dark-mode .checkout-container .text-success {
+    color: #81c784 !important;
+}
+.checkout-container .text-muted {
+    color: #999 !important;
+}
+body.dark-mode .checkout-container .text-muted {
+    color: #888 !important;
+}
+.checkout-container hr {
+    border-color: #e0e0e0;
+}
+body.dark-mode .checkout-container hr {
+    border-color: #232526;
+}
+.checkout-container .form-check-input {
+    border: 2px solid #ddd;
+    transition: all 0.2s;
+}
+.checkout-container .form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+body.dark-mode .checkout-container .form-check-input {
+    background-color: #222;
+    border-color: #333;
+}
+body.dark-mode .checkout-container .form-check-input:checked {
+    background-color: #4aa3ff;
+    border-color: #4aa3ff;
+}
+.checkout-container .form-check-label {
+    color: #333;
+    font-weight: 500;
+}
+body.dark-mode .checkout-container .form-check-label {
+    color: #e8e8e8;
+}
+</style>
+<div class="container checkout-container py-5 pt-5 mt-5">
+
+    <h2 class="mb-4 fw-bold">Checkout – Buy Now</h2>
+
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    <!-- PRODUCT SUMMARY -->
+    <div class="card mb-4 p-3">
+        <div class="d-flex align-items-center">
+            <img src="{{ product.main_image.url }}"
+                 class="border rounded me-3"
+                 style="width: 90px; height: 90px; object-fit: cover;">
+
+            <div>
+                <h5>{{ product.name }}</h5>
+                <p class="text-muted">Qty: {{ quantity }}</p>
+                {% if buy_size %}<p class="text-muted">Size: <strong>{{ buy_size }}</strong></p>{% endif %}
+                <p class="text-muted">Price: ₹{{ product.price|floatformat:2 }}</p>
+                <p class="fw-bold text-danger">₹{{ subtotal }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHECKOUT FORM -->
+    <form method="POST" class="card p-4" id="checkout-form">
+        {% csrf_token %}
+
+        <h4 class="mb-3">Shipping Details</h4>
+
+        {% if addresses %}
+            {% for addr in addresses %}
+            <div class="border rounded p-3 mb-2">
+                <label class="w-100">
+                    <input type="radio"
+                           name="address_choice"
+                           value="{{ addr.id }}"
+                           class="me-2 address-radio"
+                           {% if addr.address_type == "home" %}checked{% endif %}>
+
+                    <strong>{{ addr.address_type|title }}</strong><br>
+                    {{ addr.full_name }}<br>
+                    {{ addr.address }}, {{ addr.city }} - {{ addr.pincode }}<br>
+                    {{ addr.phone }}
+                </label>
+            </div>
+            {% endfor %}
+
+            <div class="border rounded p-3 mb-3">
+                <label>
+                    <input type="radio"
+                           name="address_choice"
+                           value="new"
+                           class="me-2 address-radio">
+                    <strong>Add New Address</strong>
+                </label>
+            </div>
+        {% else %}
+            <!-- No saved addresses: show new form by default -->
+            <input type="hidden" name="address_choice" value="new">
+        {% endif %}
+
+        <!-- NEW ADDRESS FORM -->
+        <div id="new-address-form"
+            style="display:none;">
+            <input type="text" name="full_name" class="form-control mb-2" placeholder="Full Name" required>
+            <input type="tel" name="phone" pattern="[0-9]{10}" minlength="10" maxlength="10"
+                   class="form-control mb-2" placeholder="Phone Number" required>
+            <textarea name="address" class="form-control mb-2" placeholder="Address" required></textarea>
+            <input type="text" name="city" class="form-control mb-2" placeholder="City" required>
+            <input type="number" name="pincode" pattern="[0-9]{6}" minlength="6" maxlength="6"
+                   class="form-control mb-2" placeholder="Pincode" required>
+        </div>
+
+        <hr>
+        <h5 class="fw-bold mt-4">Payment Method</h5>
+
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="radio"
+                 name="payment_method" value="COD" checked>
+          <label class="form-check-label">
+            Cash on Delivery
+          </label>
+        </div>
+
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="radio"
+                 name="payment_method" value="SIMULATED" disabled>
+          <label class="form-check-label">
+            Online Payment (UPI / Card) (Not Completed! Working on it)
+          </label>
+        </div>
+
+        <div class="alert alert-info mt-3" style="font-size:14px;">
+          <strong>Demo Mode:</strong> Online payments are simulated for project purposes.
+        </div>
+
+        <button type="submit" class="btn btn-success w-100 mt-3" id="place-order-btn">
+            Place Order
+        </button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const newForm = document.getElementById('new-address-form');
+    const placeBtn = document.getElementById('place-order-btn');
+    const addressRadios = document.querySelectorAll('input[name="address_choice"]');
+
+    // SAFETY CHECK
+    if (!newForm || !placeBtn) return;
+
+    const newInputs = newForm.querySelectorAll('input, textarea');
+
+    function getSelectedAddress() {
+        return document.querySelector('input[name="address_choice"]:checked')
+            || document.querySelector('input[name="address_choice"][type="hidden"]');
+    }
+
+    function toggleNewForm() {
+        const selected = getSelectedAddress();
+
+        if (selected && selected.value === 'new') {
+            newForm.style.display = 'block';
+            newInputs.forEach(i => i.required = true);
+        } else {
+            newForm.style.display = 'none';
+            newInputs.forEach(i => i.required = false);
+        }
+
+        validateOrder();
+    }
+
+    function validateOrder() {
+        const selected = getSelectedAddress();
+
+        if (!selected) {
+            placeBtn.disabled = true;
+            return;
+        }
+
+        if (selected.value === 'new') {
+            let valid = true;
+            newInputs.forEach(i => {
+                if (!i.value.trim()) valid = false;
+            });
+            placeBtn.disabled = !valid;
+        } else {
+            placeBtn.disabled = false;
+        }
+    }
+
+    // RADIO CHANGE
+    addressRadios.forEach(radio => {
+        radio.addEventListener('change', toggleNewForm);
+    });
+
+    // INPUT CHANGE
+    newInputs.forEach(input => {
+        input.addEventListener('input', validateOrder);
+    });
+
+    // INITIAL LOAD (CRITICAL)
+    toggleNewForm();
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block content %}
+<h3>Confirm Delete</h3>
+<p>Are you sure you want to delete product: <strong>{{ product.name }}</strong>?</p>
+<form method="post">{% csrf_token %}
+  <button class="btn btn-danger">Yes, Delete</button>
+  <a class="btn btn-secondary" href="{% url 'admin_panel:products_list' %}">Cancel</a>
+</form>
+{% endblock %}

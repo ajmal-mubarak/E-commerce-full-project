@@ -1,0 +1,256 @@
+{% load static %}
+
+<style>
+/* -----------------------------
+   MOBILE MENU BASE STYLE
+----------------------------- */
+.mobile-menu-box {
+    position: fixed;
+    top: 0;
+    left: -260px;
+    width: 260px;
+    height: 100%;
+    background: #fff;
+    padding: 20px;
+    z-index: 9999;
+    overflow-y: auto;
+    transition: left 0.35s ease;
+    box-shadow: 2px 0 20px rgba(0,0,0,0.2);
+}
+
+/* BACKDROP */
+.mobile-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(2px);
+    z-index: 9998;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+}
+
+/* SHOW MENU */
+.mobile-menu-box.active {
+    left: 0;
+}
+
+.mobile-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* MENU ITEMS */
+.mobile-menu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.mobile-menu-list li {
+    margin-bottom: 12px;
+}
+
+.mobile-menu-list a {
+    font-size: 16px;
+    color: #333;
+    text-decoration: none;
+    display: block;
+    padding: 8px 0;
+    transition: 0.2s;
+}
+
+.mobile-menu-list a:hover {
+    color: #0d6efd;
+}
+
+
+/* -----------------------------
+   DARK MODE SIDEBAR
+----------------------------- */
+body.dark-mode .mobile-menu-box {
+    background: #1d1d1d !important;
+    color: #fff;
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.6);
+}
+
+body.dark-mode .mobile-menu-list a {
+    color: #ddd;
+}
+
+body.dark-mode .mobile-menu-list a:hover {
+    color: #4aa3ff;
+}
+
+body.dark-mode #themeToggle {
+    background: #1d1d1d !important;
+    color: #fff !important;
+}
+
+body.dark-mode #themeToggle:hover {
+    background: #1d1d1d !important;
+}
+.navbar-toggler,.logo {
+    margin-left: -19px;
+}
+</style>
+
+
+<!-- ****************** NAVBAR ****************** -->
+<nav class="navbar position-fixed top-0 start-0 end-0 z-3 navbar-expand-lg bg-white shadow-sm py-2">
+    <div class="container d-flex align-items-center">
+
+        <!-- MOBILE MENU BUTTON -->
+        <button id="menuToggleBtn" class="navbar-toggler me-2" type="button">
+            <span><img src="{% static 'images/menu.png' %}" width="28"></span>
+        </button>
+
+        <!-- LOGO -->
+        <a href="{% url 'index' %}" class="mx-auto logo d-lg-none">
+            <img src="{% static 'images/logo.png' %}" width="150">
+        </a>
+
+        <!-- RIGHT ICONS -->
+        <div class="d-flex align-items-center ms-auto d-lg-none">
+            <a href="{% url 'search' %}" class="cart-icon py-1 px-2 me-2">
+                <i class="fa fa-search"></i>
+            </a>
+            <a href="{% url 'cart' %}" class="cart-icon btn py-0 px-0">
+                <img src="{% static 'images/cart.png' %}" width="26">
+                {% if cart_count > 0 %}
+                    <span class="cart-badge"  id="cart-count">{{ cart_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{% url 'wishlist' %}" class="cart-icon btn py-0 px-0 ms-2">
+                <img src="{% static 'images/wishlisticon.png' %}" width="26">
+                {% if wishlist_count > 0 %}
+                    <span class="cart-badge" id="wishlist-count">{{ wishlist_count }}</span>
+                {% endif %}
+            </a>
+        </div>
+
+        <!-- DESKTOP LOGO -->
+        <a href="{% url 'index' %}" class="d-none d-lg-block">
+            <img src="{% static 'images/logo.png' %}" width="170">
+        </a>
+
+        <!-- DESKTOP MENU -->
+        <div class="collapse navbar-collapse" id="navbarMenu">
+            <form action="{% url 'search' %}" method="GET"
+                  class="d-none d-lg-flex ms-auto me-4 search-desktop">
+                <input class="form-control" type="text" name="q" placeholder="Search products...">
+                <button class="btn btn-primary ms-2"><i class="fa fa-search"></i></button>
+            </form>
+
+            <ul class="navbar-nav ms-auto text-center">
+                <li class="nav-item"><a class="nav-link" href="{% url 'index' %}">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'products' %}">Products</a></li>
+
+{% if user.is_authenticated %}
+
+<li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle fw-bold text-primary" href="#" role="button"
+       data-bs-toggle="dropdown">
+        {{ user.username }}
+    </a>
+
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{% url 'profile' %}#orders">Profile</a></li>
+        <li><a class="dropdown-item" href="{% url 'my_orders' %}">My Orders</a></li>
+        <li><a class="dropdown-item" href="{% url 'coupons' %}">Coupons</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item text-danger" href="{% url 'logout' %}">Logout</a></li>
+    </ul>
+</li>
+
+{% else %}
+<li class="nav-item">
+    <a class="nav-link" href="{% url 'login' %}">Login</a>
+</li>
+{% endif %}
+
+            <a href="{% url 'cart' %}" class="cart-icon btn py-0 px-0">
+                <img src="{% static 'images/cart.png' %}" width="26">
+                {% if cart_count > 0 %}
+                    <span class="cart-badge" id="cart-count">{{ cart_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{% url 'wishlist' %}" class="cart-icon btn py-0 px-0 ms-4">
+                <img src="{% static 'images/wishlisticon.png' %}" width="26">
+                {% if wishlist_count > 0 %}
+                    <span class="cart-badge" id="wishlist-count">{{ wishlist_count }}</span>
+                {% endif %}
+            </a>
+
+
+<button id="theme-toggle" class="btn border-0 ms-2">
+    <i id="theme-icon" class="fa fa-moon-o"></i>
+</button>
+
+            </ul>
+        </div>
+    </div>
+</nav>
+
+
+<!-- ********** MOBILE MENU (SLIDE-IN) ********** -->
+<div id="mobileMenu" class="mobile-menu-box">
+
+    <div class="mobile-menu-header d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold m-0">Menu</h5>
+        <button id="closeMenuBtn" class="btn btn-sm btn-light">&times;</button>
+    </div>
+
+    <ul class="mobile-menu-list">
+        <li><a href="{% url 'index' %}">Home</a></li>
+        <li><a href="{% url 'products' %}">Products</a></li>
+
+        {% if user.is_authenticated %}
+            <li><a href="{% url 'profile' %}">Profile</a></li>
+            <li><a href="{% url 'my_orders' %}">My Orders</a></li>
+            <li><a href="{% url 'coupons' %}">Coupons</a></li>
+            <li><a href="{% url 'logout' %}" class="text-danger">Logout</a></li>
+        {% else %}
+            <li><a href="{% url 'login' %}">Login</a></li>
+        {% endif %}
+    </ul>
+
+    <hr>
+
+    <!-- Theme Toggle -->
+    <button id="themeToggle" class="btn w-100 mt-2 bg-body-secondary border-0 py-2">
+        <i id="theme-icon" class="fa fa-moon-o"></i> 
+        <span class="ms-2">Dark / Light Mode</span>
+    </button>
+
+</div>
+
+<!-- BACKDROP (to close menu when clicking outside) -->
+<div id="menuBackdrop" class="mobile-backdrop"></div>
+
+<script>
+    const mobileMenu = document.getElementById("mobileMenu");
+    const backdrop = document.getElementById("menuBackdrop");
+
+    // Open Menu
+    document.querySelector(".navbar-toggler").onclick = () => {
+        mobileMenu.classList.add("active");
+        backdrop.classList.add("active");
+    };
+
+    // Close Menu via button
+    document.getElementById("closeMenuBtn").onclick = () => {
+        mobileMenu.classList.remove("active");
+        backdrop.classList.remove("active");
+    };
+
+    // Close menu if clicking outside
+    backdrop.onclick = () => {
+        mobileMenu.classList.remove("active");
+        backdrop.classList.remove("active");
+    };
+</script>
+

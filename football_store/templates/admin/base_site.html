@@ -1,0 +1,12 @@
+{% extends "admin/base.html" %}
+
+{% load static %}
+
+{% block title %}Football Shop Admin{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="icon" type="image/png" href="{% static 'images/admin_icon.png' %}">
+  <link rel="manifest" href="{% static 'admin/manifest.json' %}">
+  <meta name="theme-color" content="#0d6efd">
+{% endblock %}

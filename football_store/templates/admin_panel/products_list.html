@@ -1,0 +1,37 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block title %}Products{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Products</h2>
+  <a class="btn btn-primary" href="{% url 'admin_panel:product_add' %}">Add Product</a>
+</div>
+
+<table class="table table-hover">
+  <thead>
+    <tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Live</th><th>Created</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for p in products %}
+    <tr>
+      <td>
+        {% if p.main_image %}
+          <img src="{{ p.main_image.url }}" class="thumb-small">
+        {% endif %}
+      </td>
+      <td>{{ p.name }}</td>
+      <td>{{ p.get_category_display }}</td>
+      <td>₹{{ p.price }}</td>
+      <td>{% if p.is_live %}<span class="badge bg-success">Live</span>{% else %}<span class="badge bg-secondary">Hidden</span>{% endif %}</td>
+      <td>{{ p.created_at }}</td>
+      <td>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'admin_panel:product_edit' p.id %}">Edit</a>
+        <form action="{% url 'admin_panel:product_delete' p.id %}" method="post" style="display:inline;">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete product?')">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

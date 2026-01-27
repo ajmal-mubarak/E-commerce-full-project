@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Verify OTP{% endblock %}
+
+{% block content %}
+<div class="otp-container">
+    <div class="otp-card">
+        <div class="otp-header">
+            <h3 class="otp-title">Verify Your Email</h3>
+            <p class="otp-subtitle">We have sent an OTP to <span class="otp-email">{{ email }}</span></p>
+            <p class="otp-countdown" id="countdown">OTP expires in <strong>05:00</strong></p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-warning mt-2">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST" id="otpForm">
+            {% csrf_token %}
+            <div id="otp-container">
+                <input type="text" maxlength="1" class="otp-box" name="otp1" inputmode="numeric" required>
+                <input type="text" maxlength="1" class="otp-box" name="otp2" inputmode="numeric" required>
+                <input type="text" maxlength="1" class="otp-box" name="otp3" inputmode="numeric" required>
+                <input type="text" maxlength="1" class="otp-box" name="otp4" inputmode="numeric" required>
+                <input type="text" maxlength="1" class="otp-box" name="otp5" inputmode="numeric" required>
+                <input type="text" maxlength="1" class="otp-box" name="otp6" inputmode="numeric" required>
+            </div>
+            <button type="submit" class="verify-btn" id="verifyBtn">Verify OTP</button>
+        </form>
+
+        <!-- Success Animation -->
+        <div id="otp-success" class="otp-success">
+            <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                <path class="checkmark__check" fill="none" d="M14 27l7 7 17-17"/>
+            </svg>
+            <h4>OTP Verified Successfully!</h4>
+            <p>Redirecting...</p>
+        </div>
+
+        <div class="resend-section">
+            <p class="resend-text">
+                Didn't receive the OTP? 
+                <button type="button" class="resend-btn" id="resendBtn">Resend OTP</button>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    document.addEventListener('DOMContentLoaded', function() {
+        let timeLeft = 5 * 60; // 5 minutes in seconds
+        const countdownEl = document.getElementById('countdown');
+        const verifyBtn = document.getElementById('verifyBtn');
+        const otpForm = document.getElementById('otpForm');
+        const resendBtn = document.getElementById('resendBtn');
+        const boxes = document.querySelectorAll('.otp-box');
+
+        function updateTimer() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            countdownEl.innerText = `OTP expires in ${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+        }
+        updateTimer();
+        const timer = setInterval(() => {
+            timeLeft--;
+            updateTimer();
+            if (timeLeft < 0) {
+                clearInterval(timer);
+                countdownEl.innerText = "OTP has expired!";
+                verifyBtn.disabled = true;
+            }
+        }, 1000);
+
+        otpForm.addEventListener('submit', function(e) {
+            if (timeLeft < 0) {
+                e.preventDefault();
+                alert("OTP has expired. Please register again.");
+            }
+            // Remove any existing hidden otp input
+            const existing = otpForm.querySelector('input[name="otp"]');
+            if (existing) existing.remove();
+            const otpValue = Array.from(boxes).map(b => b.value).join('');
+            let hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'otp';
+            hiddenInput.value = otpValue;
+            otpForm.appendChild(hiddenInput);
+        });
+
+        resendBtn.addEventListener('click', function() {
+            fetch("{% url 'resend_otp' %}", { method: 'POST', headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }})
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if(data.success) {
+                    timeLeft = 5*60;
+                    verifyBtn.disabled = false;
+                    updateTimer();
+                }
+            });
+        });
+
+        boxes.forEach((box, index) => {
+            box.addEventListener('input', (e) => {
+                box.value = box.value.replace(/[^0-9]/g, '');
+                if (box.value.length === 1 && index < boxes.length - 1) {
+                    boxes[index + 1].focus();
+                }
+                if (box.value.length > 1) {
+                    const chars = box.value.split('');
+                    box.value = chars[0];
+                    let next = index + 1;
+                    for (let i = 1; i < chars.length && next < boxes.length; i++, next++) {
+                        boxes[next].value = chars[i];
+                    }
+                    if (next - 1 < boxes.length) boxes[next - 1].focus();
+                }
+            });
+            box.addEventListener('keydown', (e) => {
+                if (e.key === "Backspace" && box.value === "" && index > 0) {
+                    boxes[index - 1].focus();
+                }
+            });
+            if (index === 0) {
+                box.addEventListener('paste', (e) => {
+                    e.preventDefault();
+                    const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+                    boxes.forEach(b => b.value = '');
+                    for (let i = 0; i < paste.length && i < boxes.length; i++) {
+                        boxes[i].value = paste[i];
+                    }
+                    if (paste.length > 0 && paste.length <= boxes.length) {
+                        boxes[Math.min(paste.length, boxes.length) - 1].focus();
+                    }
+                });
+            }
+        });
+    });
+
+const successDiv = document.getElementById('otp-success');
+const otpForm = document.getElementById('otpForm');
+
+{% if success %}
+otpForm.style.display = "none"; // hide form
+successDiv.style.display = "block"; // show success animation
+
+// redirect after 2 seconds
+setTimeout(() => {
+    window.location.href = "{% url 'login' %}";
+}, 2000);
+{% endif %}
+</script>
+
+<style>
+    .card {
+        border-radius: 15px;
+    }
+
+    .form-control {
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 16px;
+    }
+
+    .btn-primary {
+        border-radius: 10px;
+        font-size: 16px;
+        padding: 10px;
+    }
+
+    #countdown {
+        font-weight: bold;
+        color: #ff4d4f;
+    }
+        .otp-box {
+        width: 45px;
+        height: 55px;
+        font-size: 24px;
+        text-align: center;
+        border-radius: 10px;
+        border: 1px solid #ccc;
+        outline: none;
+        transition: border 0.2s;
+    }
+
+    .otp-box:focus {
+        border: 2px solid #007bff;
+    }
+    .checkmark {
+    width: 80px;
+    height: 80px;
+    stroke: #4BB543;
+    stroke-width: 4;
+    stroke-miterlimit: 10;
+    box-sizing: content-box;
+    }
+
+    .checkmark__circle {
+        stroke-dasharray: 166;
+        stroke-dashoffset: 166;
+        stroke-width: 4;
+        stroke-miterlimit: 10;
+        stroke: #4BB543;
+        fill: none;
+        animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+    }
+
+    .checkmark__check {
+        transform-origin: 50% 50%;
+        stroke-dasharray: 48;
+        stroke-dashoffset: 48;
+        animation: stroke 0.4s 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+    }
+
+    @keyframes stroke {
+        100% {
+            stroke-dashoffset: 0;
+        }
+    }
+</style>
+{% endblock %}
