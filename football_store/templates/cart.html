@@ -38,7 +38,7 @@
                     {% if item.product.sizes.all %}
                     <div class="item-size" style="font-size: 0.9rem; color: #666; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
                         <span>Size:</span>
-                        <select class="form-select form-select-sm" style="width: auto; max-width: 100px;" data-item-id="{{ item.id }}" onchange="updateSize(this, {{ item.id }})">
+                        <select class="form-select form-select-sm" style="width: auto; max-width: 100px;" data-item-id="{{ item.id }}" onchange="updateSize(this, '{{ item.id }}')">
                             <option value="" disabled>Select Size</option>
                             {% for size in item.product.sizes.all %}
                             <option value="{{ size.size }}" {% if item.size == size.size %}selected{% endif %}>{{ size.size }}</option>
@@ -51,12 +51,20 @@
                     </div>
                     {% endif %}
 
+                    <div class="item-stock" style="font-size: 0.85rem; color: {% if item.available_stock < 5 %}#dc3545{% else %}#198754{% endif %}; margin-bottom: 8px;">
+                        {% if item.available_stock > 0 %}
+                        Available: {{ item.available_stock }}
+                        {% else %}
+                        <span class="text-danger">No more available</span>
+                        {% endif %}
+                    </div>
+
                     <div class="item-actions">
                         <div class="qty-control">
                             <button type="button" class="qty-btn" data-action="minus"
                                 data-item-id="{{ item.id }}">−</button>
                             <input type="number" class="cart-qty" value="{{ item.quantity }}"
-                                data-item-id="{{ item.id }}" readonly>
+                                data-item-id="{{ item.id }}" data-max-stock="{{ item.available_stock }}" readonly>
                             <button type="button" class="qty-btn" data-action="plus"
                                 data-item-id="{{ item.id }}">+</button>
                         </div>
@@ -78,7 +86,7 @@
             <div style="background: #f0f7f0; border: 1px solid #90ee90; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; text-align: center;">
                 <span style="font-size: 16px;">🚚</span>
                 <div style="width: 100%; text-align: left;">
-                    <div style="font-size: 11px; color: #666; margin-bottom: 2px;">FREE DELIVERY</div>
+                    <div style="font-size: 11px; color: #666; margin-bottom: 2px;">ESTIMATED DELIVERY</div>
                     <div style="font-weight: 600; color: #1e7e34; font-size: 13px;" id="cartDeliveryDate">Delivery by Feb 03, 2026</div>
                 </div>
             </div>
@@ -95,8 +103,8 @@
                 <label class="coupon-label">Apply Coupon</label>
                 <form method="POST" action="{% url 'apply_coupon' %}" style="display: contents;">
                     {% csrf_token %}
-                    <div class="coupon-input-group">
-                        <input type="text" name="coupon_code" placeholder="Enter code" required>
+                    <div class="coupon-input-group mb-3">
+                        <input type="text" name="coupon_code" placeholder="Enter code" pattern="[A-Z0-9]+" style="text-transform: uppercase;" required>
                         <button type="submit">Apply</button>
                     </div>
                 </form>
@@ -130,6 +138,13 @@
                 <span>- ₹{{ discount|floatformat:2 }}</span>
             </div>
             {% endif %}
+
+            <div class="summary-row">
+                <span>Shipping Fee</span>
+                <span class="{% if shipping_fee == 0 %}text-success{% endif %}">
+                    {% if shipping_fee == 0 %}Free{% else %}₹{{ shipping_fee }}{% endif %}
+                </span>
+            </div>
 
             <div class="summary-row total">
                 <span>Total</span>
@@ -196,6 +211,9 @@
 
     // Cart AJAX functionality
     document.addEventListener('DOMContentLoaded', function () {
+        // Update button states on page load
+        updateAllButtonStates();
+        
         // Quantity buttons
         document.querySelectorAll('.qty-btn').forEach(btn => {
             btn.addEventListener('click', function (e) {
@@ -203,20 +221,35 @@
                 const action = this.dataset.action;
                 const itemId = this.dataset.itemId;
                 const qtyInput = document.querySelector(`.cart-qty[data-item-id="${itemId}"]`);
-                let newQty = parseInt(qtyInput.value);
-
+                const maxStock = parseInt(qtyInput.dataset.maxStock) || 999;
+                let currentQty = parseInt(qtyInput.value);
+                let newQty = currentQty;
+                
+                // Calculate new quantity with stock limit
                 if (action === 'plus') {
-                    newQty += 1;
-                } else if (action === 'minus' && newQty > 1) {
-                    newQty -= 1;
+                    // Check if we can increment
+                    if (currentQty >= maxStock) {
+                        showErrorToast(`Only ${maxStock} items available in stock`);
+                        return;
+                    }
+                    newQty = Math.min(currentQty + 1, maxStock);
+                } else if (action === 'minus' && currentQty > 1) {
+                    newQty = currentQty - 1;
                 } else {
                     return;
                 }
 
-                updateQuantity(itemId, newQty);
+                // OPTIMISTIC UPDATE: Update input immediately
+                qtyInput.value = newQty;
+                
+                // Update button states for this item
+                updateButtonStates(itemId, newQty, maxStock);
+
+                // Let server validate (it accounts for other variants)
+                updateQuantity(itemId, newQty, currentQty);
             });
         });
-
+        
         // Remove button
         document.querySelectorAll('.remove-cart-btn').forEach(btn => {
             btn.addEventListener('click', function (e) {
@@ -227,40 +260,110 @@
         });
     });
 
-    function updateQuantity(itemId, newQty) {
-        fetch(`/cart/update-item/${itemId}/`, {
+    function updateButtonStates(itemId, currentQty, maxStock) {
+        const minusBtn = document.querySelector(`.qty-btn[data-action="minus"][data-item-id="${itemId}"]`);
+        const plusBtn = document.querySelector(`.qty-btn[data-action="plus"][data-item-id="${itemId}"]`);
+        
+        // Disable minus button if quantity is 1
+        if (minusBtn) {
+            minusBtn.disabled = currentQty <= 1;
+            minusBtn.style.opacity = currentQty <= 1 ? '0.5' : '1';
+            minusBtn.style.cursor = currentQty <= 1 ? 'not-allowed' : 'pointer';
+        }
+        
+        // Disable plus button if quantity equals or exceeds stock
+        if (plusBtn) {
+            plusBtn.disabled = currentQty >= maxStock;
+            plusBtn.style.opacity = currentQty >= maxStock ? '0.5' : '1';
+            plusBtn.style.cursor = currentQty >= maxStock ? 'not-allowed' : 'pointer';
+        }
+    }
+    
+    function updateAllButtonStates() {
+        document.querySelectorAll('.cart-qty').forEach(input => {
+            const itemId = input.dataset.itemId;
+            const currentQty = parseInt(input.value);
+            const maxStock = parseInt(input.dataset.maxStock) || 999;
+            updateButtonStates(itemId, currentQty, maxStock);
+        });
+    }
+
+    function updateQuantity(itemId, newQty, originalQty) {
+        fetch(`/cart/update/${itemId}/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
                 quantity: newQty
             })
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update quantity input
-                    document.querySelector(`.cart-qty[data-item-id="${itemId}"]`).value = newQty;
-
-                    // Update item subtotal
-                    document.getElementById(`item-total-${itemId}`).textContent = `₹${data.item_subtotal}`;
-
-                    // Update cart summary
-                    updateCartSummary(data);
+            .then(async response => {
+                const data = await response.json();
+                if (response.ok && data.success !== false) {
+                     return data;
                 } else {
-                    alert('Error updating quantity');
+                    throw new Error(data.error || 'Error updating quantity');
                 }
             })
-            .catch(error => console.error('Error:', error));
+            .then(data => {
+                // Update quantity input
+                const qtyInput = document.querySelector(`.cart-qty[data-item-id="${itemId}"]`);
+                qtyInput.value = newQty;
+                
+                // Update max stock if server sent it
+                if (data.available_stock !== undefined) {
+                    qtyInput.dataset.maxStock = data.available_stock;
+                }
+
+                // Update item subtotal
+                document.getElementById(`item-total-${itemId}`).textContent = `₹${parseFloat(data.item_subtotal).toFixed(2)}`;
+
+                // Update cart summary
+                updateCartSummary(data);
+                
+                // Update button states after successful update
+                const maxStock = parseInt(qtyInput.dataset.maxStock) || 999;
+                updateButtonStates(itemId, newQty, maxStock);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // Show error
+                showErrorToast(error.message);
+                
+                // Reset input to original value
+                const input = document.querySelector(`.cart-qty[data-item-id="${itemId}"]`);
+                if (input) {
+                    input.value = originalQty;
+                    // Reset button states too
+                    const maxStock = parseInt(input.dataset.maxStock) || 999;
+                    updateButtonStates(itemId, originalQty, maxStock);
+                }
+                
+                // Recalculate and restore the original item total
+                // We need to get the product price from the page
+                const itemCard = document.getElementById(`cart-item-${itemId}`);
+                if (itemCard) {
+                    const priceElement = itemCard.querySelector('.item-price');
+                    if (priceElement) {
+                        const priceText = priceElement.textContent.replace('₹', '').trim();
+                        const price = parseFloat(priceText);
+                        const originalTotal = price * originalQty;
+                        document.getElementById(`item-total-${itemId}`).textContent = `₹${originalTotal.toFixed(2)}`;
+                    }
+                }
+            });
     }
 
     function removeFromCart(itemId) {
-        fetch(`/cart/remove-item/${itemId}/`, {
+        fetch(`/cart/remove/${itemId}/`, {
             method: 'POST',
             headers: {
-                'X-CSRFToken': getCookie('csrftoken')
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
             .then(response => response.json())
@@ -292,8 +395,8 @@
     function updateCartSummary(data) {
         // Update subtotal
         const subtotalElement = document.getElementById('cart-subtotal');
-        if (subtotalElement) {
-            subtotalElement.textContent = data.subtotal.toFixed(2);
+        if (subtotalElement && data.subtotal !== undefined) {
+            subtotalElement.textContent = parseFloat(data.subtotal).toFixed(2);
         }
 
         // Update discount row if coupon exists
@@ -301,7 +404,7 @@
         if (data.discount > 0 && discountRow) {
             const discountValue = discountRow.querySelector('span:last-child');
             if (discountValue) {
-                discountValue.textContent = `- ₹${data.discount.toFixed(2)}`;
+                discountValue.textContent = `- ₹${parseFloat(data.discount).toFixed(2)}`;
             }
             discountRow.style.display = 'flex';
         } else if (discountRow && data.discount === 0) {
@@ -310,11 +413,11 @@
 
         // Update total - target the last span in the summary-row.total div
         const totalRow = document.querySelector('.summary-row.total');
-        if (totalRow) {
+        if (totalRow && data.total !== undefined) {
             const spans = totalRow.querySelectorAll('span');
             if (spans.length >= 2) {
                 // Update the second span (the value)
-                spans[1].textContent = `₹${data.total.toFixed(2)}`;
+                spans[1].textContent = `₹${parseFloat(data.total).toFixed(2)}`;
             }
         }
 
@@ -350,6 +453,7 @@
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: `size=${encodeURIComponent(newSize)}`
         })

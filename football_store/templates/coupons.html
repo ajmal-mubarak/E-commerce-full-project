@@ -272,6 +272,15 @@
         gap: 12px;
         flex-wrap: wrap;
         justify-content: center;
+        overflow-x: auto; /* Allow scrolling on small screens if needed */
+        -webkit-overflow-scrolling: touch;
+        padding: 5px; /* Space for shadow */
+    }
+    
+    /* Hide scrollbar */
+    .filters::-webkit-scrollbar {
+        height: 0px;
+        background: transparent;
     }
 
     .filter-btn {
@@ -284,6 +293,9 @@
         font-size: 14px;
         transition: all 0.2s;
         color: #64748b;
+        text-decoration: none;
+        white-space: nowrap; /* Prevent breaking */
+        display: inline-block;
     }
 
     .filter-btn:hover {
@@ -354,6 +366,13 @@
     @media (max-width: 640px) {
         .coupons-container {
             padding: 30px 0;
+        }
+
+        .filters {
+            justify-content: flex-start; /* Align start to start scrolling */
+            flex-wrap: nowrap; /* Force single line scroll on mobile */
+            padding-left: 15px; /* Add padding for start of list */
+            padding-right: 15px;
         }
 
         .coupons-content {
@@ -435,15 +454,16 @@
         <p>Grab your discount ticket today!</p>
     </div>
 
-    {% if available_coupons %}
-
     <div class="filters">
-        <button class="filter-btn active" onclick="filterCoupons('all', this)">All Tickets</button>
-        <button class="filter-btn" onclick="filterCoupons('eligible', this)">Available</button>
-        {% if applied_coupon %}
-        <button class="filter-btn" onclick="filterCoupons('applied', this)">Applied</button>
-        {% endif %}
+        <a href="?filter=all" class="filter-btn {% if request.GET.filter == 'all' or not request.GET.filter %}active{% endif %}">All Tickets</a>
+        <a href="?filter=available" class="filter-btn {% if request.GET.filter == 'available' %}active{% endif %}">Available</a>
+        <a href="?filter=one_time" class="filter-btn {% if request.GET.filter == 'one_time' %}active{% endif %}">One Time</a>
+        <a href="?filter=percent" class="filter-btn {% if request.GET.filter == 'percent' %}active{% endif %}">Percentage</a>
+        <a href="?filter=amount" class="filter-btn {% if request.GET.filter == 'amount' %}active{% endif %}">Fixed Amount</a>
+        <a href="?filter=free_shipping" class="filter-btn {% if request.GET.filter == 'free_shipping' %}active{% endif %}">Free Shipping</a>
     </div>
+
+    {% if available_coupons %}
 
     <div class="coupons-content">
         {% for coupon in available_coupons %}

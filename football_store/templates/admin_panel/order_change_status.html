@@ -1,9 +1,0 @@
-{% extends 'admin_panel/base_admin.html' %}
-{% block content %}
-<h3>Change Status for Order #{{ order.id }}</h3>
-<form method="post">{% csrf_token %}
-  {{ form.as_p }}
-  <button class="btn btn-success">Save</button>
-  <a class="btn btn-secondary" href="{% url 'admin_panel:order_detail' order.id %}">Back</a>
-</form>
-{% endblock %}

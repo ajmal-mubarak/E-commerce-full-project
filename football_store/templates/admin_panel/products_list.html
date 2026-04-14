@@ -1,37 +1,184 @@
 {% extends 'admin_panel/base_admin.html' %}
 {% block title %}Products{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h2>Products</h2>
-  <a class="btn btn-primary" href="{% url 'admin_panel:product_add' %}">Add Product</a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="page-title mb-0">Products</h3>
+  <div class="d-flex gap-2">
+      <button type="submit" form="bulkDeleteForm" class="btn btn-danger rounded-pill px-4 d-none" id="bulkDeleteBtn" onclick="return confirm('Are you sure you want to delete selected products?')">
+          <i class="fa fa-trash me-2"></i> Delete Selected (<span id="selectedCount">0</span>)
+      </button>
+      <button class="btn btn-light rounded-pill px-4 border shadow-sm" data-bs-toggle="modal" data-bs-target="#filterModal">
+        <i class="fa fa-filter me-2"></i> Filter
+      </button>
+      <a class="btn btn-primary rounded-pill px-4" href="{% url 'admin_panel:product_add' %}">
+        <i class="fa fa-plus me-2"></i> Add Product
+      </a>
+  </div>
 </div>
 
-<table class="table table-hover">
-  <thead>
-    <tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Live</th><th>Created</th><th></th></tr>
-  </thead>
-  <tbody>
-    {% for p in products %}
-    <tr>
-      <td>
-        {% if p.main_image %}
-          <img src="{{ p.main_image.url }}" class="thumb-small">
-        {% endif %}
-      </td>
-      <td>{{ p.name }}</td>
-      <td>{{ p.get_category_display }}</td>
-      <td>₹{{ p.price }}</td>
-      <td>{% if p.is_live %}<span class="badge bg-success">Live</span>{% else %}<span class="badge bg-secondary">Hidden</span>{% endif %}</td>
-      <td>{{ p.created_at }}</td>
-      <td>
-        <a class="btn btn-sm btn-outline-primary" href="{% url 'admin_panel:product_edit' p.id %}">Edit</a>
-        <form action="{% url 'admin_panel:product_delete' p.id %}" method="post" style="display:inline;">
-          {% csrf_token %}
-          <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete product?')">Delete</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="content-card">
+  <div class="table-responsive">
+    <form action="{% url 'admin_panel:products_bulk_delete' %}" method="post" id="bulkDeleteForm">
+      {% csrf_token %}
+      <table class="table-custom">
+        <thead>
+          <tr>
+            <th style="width: 40px;"><input type="checkbox" class="form-check-input" id="selectAll"></th>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Stock</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in products %}
+          <tr>
+            <td><input type="checkbox" name="selected_ids" value="{{ p.id }}" class="form-check-input item-checkbox"></td>
+            <td class="text-wrap">
+              <div class="d-flex align-items-center">
+                {% if p.main_image %}
+                <img src="{{ p.main_image.url }}" class="img-thumbnail-custom me-3 shadow-sm">
+                {% else %}
+                <div
+                  class="img-thumbnail-custom me-3 bg-light d-flex align-items-center justify-content-center shadow-sm">
+                  <i class="fa fa-image text-muted"></i>
+                </div>
+                {% endif %}
+                <div style="min-width: 150px;">
+                  <div class="fw-bold text-dark lh-sm mb-1">{{ p.name }}</div>
+                  <small class="text-muted">ID: #{{ p.id }}</small>
+                </div>
+              </div>
+            </td>
+            <td><span class="badge badge-soft-info">{{ p.category.name }}</span></td>
+            <td>
+                {% if p.stock == 0 %}
+                <span class="badge bg-danger">Out of Stock</span>
+                {% elif p.stock < 5 %}
+                <span class="badge bg-warning text-dark">Low: {{ p.stock }}</span>
+                {% else %}
+                <span class="badge badge-soft-success">{{ p.stock }}</span>
+                {% endif %}
+            </td>
+            <td class="fw-bold text-dark">₹{{ p.price }}</td>
+            <td>
+              {% if p.is_live %}
+              <span class="badge badge-soft-success">Live</span>
+              {% else %}
+              <span class="badge badge-soft-secondary">Hidden</span>
+              {% endif %}
+            </td>
+            <td class="text-muted small">{{ p.created_at|date:"M d, Y" }}</td>
+            <td class="text-end">
+              <div class="d-flex justify-content-end gap-2">
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'admin_panel:product_edit' p.id %}">
+                  <i class="fa fa-pencil"></i>
+                </a>
+                <!-- Individual delete form logic preserved if desired, but could just use the same view if careful. Keeping separate for now or relying on new logic. Actually existing separate delete is fine. -->
+                <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'admin_panel:product_delete' p.id %}" onclick="if(confirm('Delete product?')){ var f=document.createElement('form'); f.method='post'; f.action=this.getAttribute('data-url'); var i=document.createElement('input'); i.type='hidden'; i.name='csrfmiddlewaretoken'; i.value='{{ csrf_token }}'; f.appendChild(i); document.body.appendChild(f); f.submit(); }">
+                    <i class="fa fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </form>
+  </div>
+</div>
+</div>
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Filter Products</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="get" action="">
+        <div class="modal-body">
+            {% if search_query %}
+            <input type="hidden" name="q" value="{{ search_query }}">
+            {% endif %}
+            
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-bold text-uppercase">Category</label>
+                <select name="category" class="form-select">
+                    <option value="">All Categories</option>
+                    {% for c in categories %}
+                    <option value="{{ c.id }}" {% if request.GET.category|add:"0" == c.id %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Min Price</label>
+                    <input type="number" name="min_price" class="form-control" value="{{ request.GET.min_price }}">
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Max Price</label>
+                    <input type="number" name="max_price" class="form-control" value="{{ request.GET.max_price }}">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Start Date</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">End Date</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ request.GET.date_to }}">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-top-0">
+            <a href="." class="btn btn-light">Clear Filters</a>
+            <button type="submit" class="btn btn-primary px-4">Apply Filters</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.item-checkbox');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const selectedCount = document.getElementById('selectedCount');
+
+        function updateState() {
+            const checkedCount = document.querySelectorAll('.item-checkbox:checked').length;
+            selectedCount.textContent = checkedCount;
+            if (checkedCount > 0) {
+                bulkDeleteBtn.classList.remove('d-none');
+            } else {
+                bulkDeleteBtn.classList.add('d-none');
+            }
+        }
+
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            updateState();
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                updateState();
+                if (!this.checked) {
+                    selectAll.checked = false;
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

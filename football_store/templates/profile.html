@@ -11,8 +11,11 @@
     </button>
 
     <!-- Sidebar Navigation -->
-    <div class="profile-sidebar" id="profileSidebar">
+    <div class="profile-sidebar pt-5 mt-5 pt-md-0 mt-md-0" id="profileSidebar">
         <div class="sidebar-header">
+            <button class="sidebar-close" id="sidebarClose">
+                <i class="fas fa-times"></i>
+            </button>
             <div class="sidebar-avatar">
                 <i class="fas fa-user-circle"></i>
             </div>
@@ -20,9 +23,6 @@
                 <h4>{{ user.get_full_name|default:user.username }}</h4>
                 <p>@{{ user.username }}</p>
             </div>
-            <button class="sidebar-close" id="sidebarClose">
-                <i class="fas fa-times"></i>
-            </button>
         </div>
 
         <nav class="sidebar-menu">
@@ -230,27 +230,27 @@
 
             <div class="form-group-modal">
                 <label>Full Name</label>
-                <input type="text" name="full_name" class="input-modal" placeholder="Full Name" required>
+                <input type="text" name="full_name" id="fullNameInput" class="input-modal" placeholder="Full Name" required>
             </div>
 
             <div class="form-group-modal">
                 <label>Phone Number</label>
-                <input type="text" name="phone" class="input-modal" pattern="[0-9]{10}" minlength="10" maxlength="10" placeholder="Phone (10 digits)" required>
+                <input type="text" name="phone" id="phoneInput" class="input-modal" pattern="[0-9]{10}" minlength="10" maxlength="10" placeholder="Phone (10 digits)" required>
             </div>
 
             <div class="form-group-modal">
                 <label>Address</label>
-                <textarea name="address" class="input-modal" placeholder="Enter your address" required></textarea>
+                <textarea name="address" id="addressInput" class="input-modal" placeholder="Enter your address" required></textarea>
             </div>
 
             <div class="form-group-modal">
                 <label>City</label>
-                <input type="text" name="city" class="input-modal" placeholder="City" required>
+                <input type="text" name="city" id="cityInput" class="input-modal" placeholder="City" required>
             </div>
 
             <div class="form-group-modal">
                 <label>Pincode</label>
-                <input type="text" name="pincode" class="input-modal" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="Pincode (6 digits)" required>
+                <input type="text" name="pincode" id="pincodeInput" class="input-modal" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="Pincode (6 digits)" required>
             </div>
 
             <div class="modal-footer">
@@ -320,8 +320,39 @@ function openAddressModal(type, action) {
     if (action === 'add') {
         titleEl.textContent = `Add ${type.charAt(0).toUpperCase() + type.slice(1)} Address`;
         form.reset();
-    } else {
+        // Clear all input fields
+        document.getElementById('fullNameInput').value = '';
+        document.getElementById('phoneInput').value = '';
+        document.getElementById('addressInput').value = '';
+        document.getElementById('cityInput').value = '';
+        document.getElementById('pincodeInput').value = '';
+    } else if (action === 'edit') {
         titleEl.textContent = `Edit ${type.charAt(0).toUpperCase() + type.slice(1)} Address`;
+        
+        // Get existing address data from the DOM
+        const cardBody = document.querySelector(`[data-address-type="${type}"]`);
+        const addressDisplay = cardBody.querySelector('.address-display');
+        
+        if (addressDisplay) {
+            // Extract data from the display
+            const paragraphs = addressDisplay.querySelectorAll('p');
+            if (paragraphs.length >= 4) {
+                const fullNameText = paragraphs[0].textContent;
+                const addressText = paragraphs[1].textContent;
+                const cityPincodeText = paragraphs[2].textContent;
+                const phoneText = paragraphs[3].textContent;
+                
+                // Parse city and pincode (format: "city - pincode")
+                const [city, pincode] = cityPincodeText.split(' - ').map(s => s.trim());
+                
+                // Populate form fields
+                document.getElementById('fullNameInput').value = fullNameText;
+                document.getElementById('phoneInput').value = phoneText;
+                document.getElementById('addressInput').value = addressText;
+                document.getElementById('cityInput').value = city;
+                document.getElementById('pincodeInput').value = pincode;
+            }
+        }
     }
     
     modal.classList.add('active');

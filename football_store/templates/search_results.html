@@ -27,11 +27,22 @@
             <div class="card border-0 shadow-sm h-100 text-center p-2">
 
                 <a href="{% url 'product_details' p.slug %}">
+                    {% if p.main_image %}
                     <img src="{{ p.main_image.url }}" class="card-img-top" style="height:220px; object-fit:cover;">
+                    {% else %}
+                    <img src="{% static 'images/no-image.png' %}" class="card-img-top" style="height:220px; object-fit:cover;">
+                    {% endif %}
                 </a>
 
                 <div class="card-body px-2">
                     <h6 class="card-title">{{ p.name }}</h6>
+                    {% if p.stock == 0 %}
+                    <p class="text-danger small mb-1 fw-bold" style="color: #dc3545 !important;">Out of Stock</p>
+                    {% elif p.stock <= 5 %}
+                    <p class="text-warning small mb-1 fw-bold" style="color: #ffc107 !important;">{{ p.stock }} left</p>
+                    {% else %}
+                    <p class="text-success small mb-1 fw-bold" style="color: #198754 !important;">Available: {{ p.stock }}</p>
+                    {% endif %}
                     <p class="text-muted">$ {{ p.price }}</p>
                 </div>
 

@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from products.models import Product
 from .models import Cart, CartItem
@@ -6,22 +7,36 @@ from .utils import get_or_create_user_cart, get_or_create_session_cart
 from django.utils import timezone
 from .models import Coupon
 from django.http import JsonResponse
+from django.db.models import Sum
 
 def get_cart(request):
     return get_or_create_user_cart(request.user) if request.user.is_authenticated else get_or_create_session_cart(request)
 
 
-def get_available_coupons(request, subtotal):
+def get_available_coupons(request, subtotal, filter_type='all'):
     """Get all available coupons for the user"""
     today = timezone.now().date()
     
-    # Base query: active coupons that aren't expired
-    coupons = Coupon.objects.filter(
-        active=True
-    ).exclude(
-        expiry_date__lt=today
-    )
+    # Base query
+    coupons = Coupon.objects.all().order_by('-id')
     
+    # Apply Filters
+    if filter_type == 'available' or filter_type == 'all' or not filter_type:
+        # Show active and not expired
+        coupons = coupons.filter(active=True).exclude(expiry_date__lt=today)
+    
+    # Type filters
+    if filter_type == 'percent':
+        coupons = coupons.filter(discount_type='percent', active=True)
+    elif filter_type == 'amount':
+        coupons = coupons.filter(discount_type='amount', active=True)
+    elif filter_type == 'free_shipping':
+        coupons = coupons.filter(discount_type='free_shipping', active=True)
+    
+    # Usage filters
+    elif filter_type == 'one_time':
+        coupons = coupons.filter(one_time_use=True, active=True)
+
     available_coupons = []
     
     for coupon in coupons:
@@ -31,11 +46,16 @@ def get_available_coupons(request, subtotal):
                 continue
         
         # Check if already used (one-time use)
+        is_used = False
         if coupon.one_time_use and request.user.is_authenticated:
             if request.user in coupon.used_by.all():
-                continue
-        
-        # Check if minimum amount is met
+                is_used = True
+                
+        # "Available" filter strict check: exclude used one-time coupons
+        if filter_type == 'available' and is_used:
+             continue
+
+        # Check eligibility (min spend)
         eligible = subtotal >= coupon.minimum_amount
         
         coupon_info = {
@@ -45,7 +65,8 @@ def get_available_coupons(request, subtotal):
             'discount_value': coupon.discount_value,
             'minimum_amount': coupon.minimum_amount,
             'eligible': eligible,
-            'discount_text': get_discount_text(coupon)
+            'discount_text': get_discount_text(coupon),
+            'is_used': is_used  # Add used status to info
         }
         
         available_coupons.append(coupon_info)
@@ -76,7 +97,18 @@ def add_to_cart(request):
         if not size:
             return redirect("product_details", slug=product.slug)
         
+        # Check stock
+        if product.stock == 0:
+             return redirect("product_details", slug=product.slug)
+
         cart = get_cart(request)
+
+        # CHECK TOTAL QUANTITY ACROSS ALL VARIANTS
+        current_holdings = cart.items.filter(product=product).aggregate(Sum('quantity'))['quantity__sum'] or 0
+        if current_holdings + quantity > product.stock:
+            from django.contrib import messages
+            messages.error(request, f"Only {product.stock} items available (You have {current_holdings} in cart).")
+            return redirect("product_details", slug=product.slug)
 
         cart_item, created = CartItem.objects.get_or_create(
             cart=cart,
@@ -106,19 +138,79 @@ def add_to_cart(request):
 
 def update_cart(request, item_id):
     cart_item = get_object_or_404(CartItem, id=item_id)
-    quantity = int(request.POST.get("quantity", 1))
+    
+    # Handle both JSON and Form data
+    if request.headers.get('content-type') == 'application/json':
+        try:
+            data = json.loads(request.body)
+            quantity = int(data.get("quantity", 1))
+        except json.JSONDecodeError:
+            quantity = 1
+    else:
+        quantity = int(request.POST.get("quantity", 1))
 
     if quantity > 0:
+        # CHECK TOTAL QUANTITY ACROSS ALL VARIANTS (EXCLUDING THIS ITEM)
+        other_items_qty = CartItem.objects.filter(
+            cart=cart_item.cart, 
+            product=cart_item.product
+        ).exclude(id=item_id).aggregate(Sum('quantity'))['quantity__sum'] or 0
+        
+        if other_items_qty + quantity > cart_item.product.stock:
+            msg = f"Only {cart_item.product.stock} items available."
+            if other_items_qty > 0:
+                msg += f" (You have {other_items_qty} other variants in cart)"
+                
+            # If AJAX request, we can return error
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"error": msg}, status=400)
+            
+            # If normal request (fallback), stick to max possible
+            quantity = max(0, cart_item.product.stock - other_items_qty)
+
         cart_item.quantity = quantity
         cart_item.save()
 
     cart = cart_item.cart
     subtotal = sum(i.quantity * i.product.price for i in cart.items.all())
+    
+    # Calculate available stock for this item after update
+    other_items_qty = CartItem.objects.filter(
+        cart=cart_item.cart,
+        product=cart_item.product
+    ).exclude(id=item_id).aggregate(Sum('quantity'))['quantity__sum'] or 0
+    # Ensure available stock is at least the current quantity and never negative
+    available_stock = max(cart_item.quantity, cart_item.product.stock - other_items_qty)
+
+    # Calculate correct total with shipping and discount
+    discount = 0
+    shipping_fee = 12
+    coupon_id = request.session.get('coupon_id')
+    
+    if coupon_id:
+        try:
+            coupon = Coupon.objects.get(id=coupon_id, active=True)
+            if coupon.discount_type == 'percent':
+                discount = subtotal * coupon.discount_value / 100
+            elif coupon.discount_type == 'amount':
+                discount = coupon.discount_value
+            elif coupon.discount_type == 'free_shipping':
+                shipping_fee = 0
+        except Coupon.DoesNotExist:
+            pass # Coupon invalid/expired
+            
+    total = max(subtotal - discount + shipping_fee, 0)
 
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return JsonResponse({
+            "success": True,
+            "item_subtotal": cart_item.quantity * cart_item.product.price,
             "item_total": cart_item.quantity * cart_item.product.price,
-            "subtotal": subtotal
+            "subtotal": subtotal,
+            "cart_count": cart.items.count(),
+            "total": total,
+            "discount": discount,
+            "available_stock": available_stock  # Send updated available stock
         })
 
     return redirect("cart")
@@ -183,6 +275,19 @@ def cart_page(request):
 
     items = cart.items.all()
 
+    # Calculate available stock for each item (considering other cart items)
+    for item in items:
+        # Get quantity of OTHER items with same product
+        other_items_qty = CartItem.objects.filter(
+            cart=cart,
+            product=item.product
+        ).exclude(id=item.id).aggregate(Sum('quantity'))['quantity__sum'] or 0
+        
+        # Calculate max quantity this item can have
+        # Ensure it's at least the current quantity (for items already in cart)
+        # and never negative
+        item.available_stock = max(item.quantity, item.product.stock - other_items_qty)
+
     # 🔒 Existing subtotal logic
     subtotal = sum(item.quantity * item.product.price for item in items)
 
@@ -205,8 +310,13 @@ def cart_page(request):
         except Coupon.DoesNotExist:
             request.session.pop('coupon_id', None)
 
+    # Shipping fee logic
+    shipping_fee = 12
+    if coupon and coupon.discount_type == 'free_shipping':
+        shipping_fee = 0
+
     # 🔒 Final total (safe)
-    total = max(subtotal - discount, 0)
+    total = max(subtotal - discount + shipping_fee, 0)
 
     # Get coupon error if exists
     coupon_error = request.session.get('coupon_error')
@@ -222,7 +332,8 @@ def cart_page(request):
         "total": total,
         "coupon": coupon,        # 🆕 optional
         "coupon_error": coupon_error,  # 🆕 error message
-        "available_coupons": available_coupons  # 🆕 available coupons list
+        "available_coupons": available_coupons,  # 🆕 available coupons list
+        "shipping_fee": shipping_fee  # 🆕 shipping fee
     }
     
     # Clear coupon error after displaying
@@ -286,8 +397,11 @@ def coupons_page(request):
     items = cart.items.all()
     subtotal = sum(item.quantity * item.product.price for item in items)
     
-    # Get all available coupons
-    available_coupons = get_available_coupons(request, subtotal)
+    # Get filter from request
+    filter_type = request.GET.get('filter', 'all')
+    
+    # Get all available coupons with filter
+    available_coupons = get_available_coupons(request, subtotal, filter_type)
     
     # Get currently applied coupon
     coupon = None

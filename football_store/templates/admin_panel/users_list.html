@@ -1,27 +1,190 @@
 {% extends 'admin_panel/base_admin.html' %}
 {% block content %}
-<div class="d-flex justify-content-between">
-  <h3>Users</h3>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="page-title mb-0">Users</h3>
+  <div class="d-flex gap-2">
+      <button type="submit" form="bulkDeleteForm" class="btn btn-danger rounded-pill px-4 d-none" id="bulkDeleteBtn" onclick="return confirm('Are you sure you want to delete selected users?')">
+          <i class="fa fa-trash me-2"></i> Delete Selected (<span id="selectedCount">0</span>)
+      </button>
+      <button class="btn btn-light rounded-pill px-4 border shadow-sm" data-bs-toggle="modal" data-bs-target="#filterModal">
+        <i class="fa fa-filter me-2"></i> Filter
+      </button>
+  </div>
 </div>
-<table class="table">
-  <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Staff</th><th>Active</th><th></th></tr></thead>
-  <tbody>
-  {% for u in users %}
-    <tr>
-      <td>{{ u.id }}</td>
-      <td>{{ u.username }}</td>
-      <td>{{ u.email }}</td>
-      <td>{{ u.is_staff }}</td>
-      <td>{{ u.is_active }}</td>
-      <td>
-        <a class="btn btn-sm btn-outline-primary" href="{% url 'admin_panel:user_edit' u.id %}">Edit</a>
-        <form action="{% url 'admin_panel:user_delete' u.id %}" method="post" style="display:inline;">
+
+<div class="content-card">
+  <div class="table-responsive">
+    <form action="{% url 'admin_panel:users_bulk_delete' %}" method="post" id="bulkDeleteForm">
+        {% csrf_token %}
+        <table class="table-custom">
+          <thead>
+            <tr>
+              <th style="width: 40px;"><input type="checkbox" class="form-check-input" id="selectAll"></th>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <td><input type="checkbox" name="selected_ids" value="{{ u.id }}" class="form-check-input item-checkbox"></td>
+              <td><span class="text-muted">#{{ u.id }}</span></td>
+              <td class="fw-bold">{{ u.username }}</td>
+              <td>{{ u.email }}</td>
+              <td>
+                {% if u.is_staff %}
+                <span class="badge badge-soft-info">Staff</span>
+                {% else %}
+                <span class="badge badge-soft-secondary">User</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.is_active %}
+                <span class="badge badge-soft-success">Active</span>
+                {% else %}
+                <span class="badge badge-soft-danger">Inactive</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                    data-bs-target="#userEditModal{{ u.id }}">
+                    <i class="fa fa-pencil"></i> <span class="d-none d-md-inline">Edit</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'admin_panel:user_delete' u.id %}" onclick="if(confirm('Delete user?')){ var f=document.createElement('form'); f.method='post'; f.action=this.getAttribute('data-url'); var i=document.createElement('input'); i.type='hidden'; i.name='csrfmiddlewaretoken'; i.value='{{ csrf_token }}'; f.appendChild(i); document.body.appendChild(f); f.submit(); }">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+    </form>
+  </div>
+</div>
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Filter Users</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="get" action="">
+        <div class="modal-body">
+            {% if search_query %}
+            <input type="hidden" name="q" value="{{ search_query }}">
+            {% endif %}
+            
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-bold text-uppercase">Role</label>
+                <select name="role" class="form-select">
+                    <option value="">All Roles</option>
+                    <option value="staff" {% if request.GET.role == 'staff' %}selected{% endif %}>Staff</option>
+                    <option value="user" {% if request.GET.role == 'user' %}selected{% endif %}>User</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-bold text-uppercase">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer border-top-0">
+            <a href="." class="btn btn-light">Clear Filters</a>
+            <button type="submit" class="btn btn-primary px-4">Apply Filters</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.item-checkbox');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const selectedCount = document.getElementById('selectedCount');
+
+        function updateState() {
+            const checkedCount = document.querySelectorAll('.item-checkbox:checked').length;
+            selectedCount.textContent = checkedCount;
+            if (checkedCount > 0) {
+                bulkDeleteBtn.classList.remove('d-none');
+            } else {
+                bulkDeleteBtn.classList.add('d-none');
+            }
+        }
+
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            updateState();
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                updateState();
+                if (!this.checked) {
+                    selectAll.checked = false;
+                }
+            });
+        });
+    });
+</script>
+
+{% for u in users %}
+<!-- User Edit Modal -->
+<div class="modal fade" id="userEditModal{{ u.id }}" tabindex="-1" aria-labelledby="userEditModalLabel{{ u.id }}"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="userEditModalLabel{{ u.id }}">Edit User: {{ u.username }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form action="{% url 'admin_panel:user_edit' u.id %}" method="post">
           {% csrf_token %}
-          <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete user?')">Delete</button>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">Username</label>
+            <input type="text" class="form-control bg-light" value="{{ u.username }}" disabled>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">Email</label>
+            <input type="text" class="form-control bg-light" value="{{ u.email }}" disabled>
+          </div>
+          <div class="mb-4">
+            <div class="form-check form-switch mb-3">
+              <input {% if u.is_staff %}checked{% endif %} type="checkbox" class="form-check-input" name="is_staff"
+                id="id_is_staff_{{ u.id }}">
+              <label class="form-check-label ms-2" for="id_is_staff_{{ u.id }}">Grant Staff Status</label>
+            </div>
+            <div class="form-check form-switch">
+              <input {% if u.is_active %}checked{% endif %} type="checkbox" class="form-check-input" name="is_active"
+                id="id_is_active_{{ u.id }}">
+              <label class="form-check-label ms-2" for="id_is_active_{{ u.id }}">Account Active</label>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 border-top pt-3">
+            <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+          </div>
         </form>
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
 {% endblock %}

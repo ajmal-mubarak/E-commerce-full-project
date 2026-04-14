@@ -8,6 +8,11 @@ from datetime import datetime, timedelta
 from django.db.models import Q
 from cart.models import Coupon
 from products.models import Product
+from django.db import transaction
+from django.contrib import messages
+import razorpay
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import Order, OrderItem, UserAddress
 
@@ -30,11 +35,19 @@ def checkout(request):
     if coupon_id:
         try:
             coupon = Coupon.objects.get(id=coupon_id, active=True)
-            discount = subtotal * coupon.discount_value / 100
+            if coupon.discount_type == 'percent':
+                discount = subtotal * coupon.discount_value / 100
+            elif coupon.discount_type == 'amount':
+                discount = coupon.discount_value
         except Coupon.DoesNotExist:
             pass
 
-    total = subtotal - discount
+    # Shipping fee logic
+    shipping_fee = 12
+    if coupon and coupon.discount_type == 'free_shipping':
+        shipping_fee = 0
+
+    total = max(subtotal - discount + shipping_fee, 0)
 
     addresses = UserAddress.objects.filter(user=request.user)
 
@@ -81,34 +94,51 @@ def checkout(request):
 
         payment_method = request.POST.get("payment_method", "COD")
 
-        order = Order.objects.create(
-            user=request.user,
-            full_name=full_name,
-            phone=phone,
-            address=address,
-            city=city,
-            pincode=pincode,
-            subtotal_amount=subtotal,
-            discount_amount=discount,
-            total_amount=total,
-            coupon=coupon,
-            payment_method=payment_method,
-            payment_status="PENDING"
-        )
+        try:
+            with transaction.atomic():
+                order = Order.objects.create(
+                    user=request.user,
+                    full_name=full_name,
+                    phone=phone,
+                    address=address,
+                    city=city,
+                    pincode=pincode,
+                    subtotal_amount=subtotal,
+                    discount_amount=discount,
+                    total_amount=total,
+                    coupon=coupon,
+                    payment_method=payment_method,
+                    payment_status="PENDING"
+                )
 
-        for item in cart_items:
-            OrderItem.objects.create(
-                order=order,
-                product=item.product,
-                quantity=item.quantity,
-                price=item.product.price,
-                size=item.size,
-            )
+                for item in cart_items:
+                    # Lock the product row to prevent race conditions
+                    product = Product.objects.select_for_update().get(id=item.product.id)
+                    
+                    if product.stock < item.quantity:
+                        raise Exception(f"Not enough stock for {product.name}. Available: {product.stock}")
+                    
+                    product.stock -= item.quantity
+                    product.save()
 
-        cart.items.all().delete()
-        request.session.pop('coupon_id', None)
+                    OrderItem.objects.create(
+                        order=order,
+                        product=product,  # Use the locked product instance
+                        quantity=item.quantity,
+                        price=product.price,
+                        size=item.size,
+                    )
 
-        if order.payment_method == "SIMULATED":
+                cart.items.all().delete()
+                request.session.pop('coupon_id', None)
+
+        except Exception as e:
+            messages.error(request, str(e))
+            return redirect("cart")
+
+        if order.payment_method == "RAZORPAY":
+            return redirect("razorpay_payment", order_id=order.id)
+        elif order.payment_method == "SIMULATED":
             return redirect("simulated_payment", order_id=order.id)
         else:
             return redirect("order_success", order_id=order.id)
@@ -119,6 +149,7 @@ def checkout(request):
         "discount": discount,
         "coupon": coupon,
         "total": total,
+        "shipping_fee": shipping_fee,
         "addresses": addresses,
     })
 
@@ -156,7 +187,10 @@ def checkout_buy_now(request):
     product = get_object_or_404(Product, id=data["product_id"])
     qty = int(request.GET.get("quantity", data["quantity"]))
     size = data.get("size")
+    size = data.get("size")
     subtotal = product.price * qty
+    shipping_fee = 12
+    total = subtotal + shipping_fee
 
     # Redirect if size is missing (size is always required)
     if not size:
@@ -199,29 +233,45 @@ def checkout_buy_now(request):
 
         payment_method = request.POST.get("payment_method", "COD")
 
-        order = Order.objects.create(
-            user=request.user,
-            full_name=full_name,
-            phone=phone,
-            address=address,
-            city=city,
-            pincode=pincode,
-            total_amount=subtotal,
-            payment_method=payment_method,
-            payment_status="PENDING"
-        )
+        try:
+            with transaction.atomic():
+                order = Order.objects.create(
+                    user=request.user,
+                    full_name=full_name,
+                    phone=phone,
+                    address=address,
+                    city=city,
+                    pincode=pincode,
+                    total_amount=total,
+                    payment_method=payment_method,
+                    payment_status="PENDING"
+                )
 
-        OrderItem.objects.create(
-            order=order,
-            product=product,
-            quantity=qty,
-            price=product.price,
-            size=size,
-        )
+                # Lock the product
+                locked_product = Product.objects.select_for_update().get(id=product.id)
+
+                if locked_product.stock < qty:
+                    raise Exception(f"Not enough stock for {locked_product.name}. Available: {locked_product.stock}")
+
+                locked_product.stock -= qty
+                locked_product.save()
+
+                OrderItem.objects.create(
+                    order=order,
+                    product=locked_product,
+                    quantity=qty,
+                    price=locked_product.price,
+                    size=size,
+                )
+        except Exception as e:
+            messages.error(request, str(e))
+            return redirect("product_details", slug=product.slug)
 
         del request.session["buy_now"]
 
-        if order.payment_method == "SIMULATED":
+        if order.payment_method == "RAZORPAY":
+            return redirect("razorpay_payment", order_id=order.id)
+        elif order.payment_method == "SIMULATED":
             return redirect("simulated_payment", order_id=order.id)
         else:
             return redirect("order_success", order_id=order.id)
@@ -230,6 +280,8 @@ def checkout_buy_now(request):
         "product": product,
         "quantity": qty,
         "subtotal": subtotal,
+        "shipping_fee": shipping_fee,
+        "total": total,
         "addresses": addresses,
         "buy_size": size,
     })
@@ -350,8 +402,8 @@ def filter_search_orders(request):
                     product_slug = first_item.product.slug
                     product_details_url = f"/products/{product_slug}/"
                     size = first_item.size or ""
-                    # Category is a CharField with choices, not a ForeignKey
-                    category_display = dict(Product._meta.get_field('category').choices).get(first_item.product.category, first_item.product.category) if first_item.product.category else ""
+                    # Category is now a ForeignKey, get the category name
+                    category_display = first_item.product.category.name if first_item.product.category else ""
                 else:
                     img_src = ""
                     product_name = "N/A"
@@ -434,3 +486,108 @@ def filter_search_orders(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+# ---------------------------------
+# CANCEL ORDER
+# ---------------------------------
+@login_required
+def cancel_order(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    
+    if order.status == 'processing':
+        order.status = 'cancelled'
+        order.save()
+        # You might want to add logic here to refund if payment was already made (e.g., wallet/stripe)
+        # For now, just status update as per request.
+        
+    return redirect('my_orders')
+
+
+# ---------------------------------
+# RAZORPAY PAYMENT
+# ---------------------------------
+@login_required
+@never_cache
+def razorpay_payment(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    
+    if order.payment_status != "PENDING":
+        return redirect("order_success", order_id=order.id)
+        
+    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+    
+    amount_in_paise = int(order.total_amount * 100)
+    
+    razorpay_order = client.order.create({
+        "amount": amount_in_paise,
+        "currency": "INR",
+        "payment_capture": "1"
+    })
+    
+    context = {
+        "order": order,
+        "razorpay_order_id": razorpay_order['id'],
+        "razorpay_key_id": settings.RAZORPAY_KEY_ID,
+        "amount": order.total_amount,
+        "amount_in_paise": amount_in_paise,
+    }
+    
+    return render(request, "payments/razorpay_payment.html", context)
+
+
+from django.http import HttpResponse
+
+@csrf_exempt
+def razorpay_callback(request, order_id=None):
+    if request.method == "POST":
+        try:
+            payment_id = request.POST.get('razorpay_payment_id', '')
+            razorpay_order_id = request.POST.get('razorpay_order_id', '')
+            signature = request.POST.get('razorpay_signature', '')
+            
+            if not order_id:
+                order_id = request.POST.get('order_id', '')
+            
+            if not order_id:
+                return HttpResponse("Order ID missing in callback data", status=400)
+                
+            try:
+                order = Order.objects.get(id=int(order_id))
+            except (Order.DoesNotExist, ValueError):
+                return HttpResponse("Order not found or invalid ID", status=404)
+                
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            
+            params_dict = {
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': payment_id,
+                'razorpay_signature': signature
+            }
+            
+            client.utility.verify_payment_signature(params_dict)
+            
+            # Payment Successful
+            order.payment_status = "PAID"
+            order.status = "processing"
+            order.save()
+            return redirect('order_success', order_id=order.id)
+            
+        except razorpay.errors.SignatureVerificationError:
+            # Payment Failed
+            if 'order' in locals():
+                order.payment_status = "FAILED"
+                order.status = "cancelled"
+                order.save()
+            messages.error(request, "Payment signature verification failed.")
+            return redirect('my_orders')
+            
+        except Exception as e:
+            # Any other error
+            import traceback
+            error_details = traceback.format_exc()
+            print("Razorpay Callback Error: ", error_details)
+            return HttpResponse(f"An unexpected error occurred during payment verification: {str(e)}", status=500)
+            
+    return redirect('my_orders')
+

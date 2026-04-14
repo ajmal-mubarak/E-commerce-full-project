@@ -1,45 +1,72 @@
 {% load static %}
 
-<div class="footer py-5">
+<div class="footer mt-5 pt-5 pb-4">
     <div class="container">
-
-        <div class="row text-center text-md-start">
-
+        <div class="row text-center text-md-start gy-4">
+            
             <!-- Column 1 -->
-            <div class="col-md-3 mb-4 text-center">
-                <img src="{% static 'images/logo-white.png' %}" width="180" class="mb-3">
-                <p>Our Purpose Is To Sustainably Make the Pleasure and Benefits of Sports Accessible to Many.</p>
+            <div class="col-lg-4 col-md-6 mb-4">
+                <img src="{% static 'images/logo-white.png' %}" width="180" class="mb-4">
+                <p class="text-secondary pe-md-4">Our purpose is to sustainably make the pleasure and benefits of sports accessible to many. Experience quality gear designed for athletes.</p>
+                <div class="d-flex gap-3 justify-content-center justify-content-md-start mt-4">
+                    <a href="javascript:void(0)" class="text-white fs-5 opacity-75 hover-opacity-100"><i class="fab fa-facebook"></i></a>
+                    <a href="javascript:void(0)" class="text-white fs-5 opacity-75 hover-opacity-100"><i class="fab fa-twitter"></i></a>
+                    <a href="javascript:void(0)" class="text-white fs-5 opacity-75 hover-opacity-100"><i class="fab fa-instagram"></i></a>
+                    <a href="javascript:void(0)" class="text-white fs-5 opacity-75 hover-opacity-100"><i class="fab fa-youtube"></i></a>
+                </div>
             </div>
 
             <!-- Column 2 -->
-            <div class="col-md-3 mb-4">
-                <h3 class="text-white">Useful Links</h3>
-                <ul class="list-unstyled mt-3">
-                    <li><a href="{% url 'index' %}" class="text-white">Home</a></li>
-                    <li><a href="{% url 'profile' %}" class="text-white">Profile</a></li>
-                    <li><a href="{% url 'coupons' %}" class="text-white">Coupons</a></li>
-                    <li><a href="{% url 'products' %}" class="text-white">Products</a></li>
+            <div class="col-lg-2 col-md-6 mb-4">
+                <h5 class="text-white fw-bold mb-4">Shop</h5>
+                <ul class="list-unstyled footer-links">
+                    <li class="mb-2"><a href="{% url 'products' %}?category=boots" class="text-secondary text-decoration-none">Football Boots</a></li>
+                    <li class="mb-2"><a href="{% url 'products' %}?category=jerseys" class="text-secondary text-decoration-none">Jerseys</a></li>
+                    <li class="mb-2"><a href="{% url 'products' %}?category=accessories" class="text-secondary text-decoration-none">Accessories</a></li>
+                    <li class="mb-2"><a href="{% url 'products' %}" class="text-secondary text-decoration-none">All Products</a></li>
                 </ul>
             </div>
 
             <!-- Column 3 -->
-            <div class="col-md-3 mb-4">
-                <h3 class="text-white">Follow Us</h3>
-                <ul class="list-unstyled mt-3">
-                    <li>Facebook</li>
-                    <li>Twitter</li>
-                    <li>Instagram</li>
-                    <li>YouTube</li>
+            <div class="col-lg-2 col-md-6 mb-4">
+                <h5 class="text-white fw-bold mb-4">Quick Links</h5>
+                <ul class="list-unstyled footer-links">
+                    <li class="mb-2"><a href="{% url 'index' %}" class="text-secondary text-decoration-none">Home</a></li>
+                    <li class="mb-2"><a href="{% url 'profile' %}" class="text-secondary text-decoration-none">Profile</a></li>
+                    <li class="mb-2"><a href="{% url 'my_orders' %}" class="text-secondary text-decoration-none">My Orders</a></li>
+                    <li class="mb-2"><a href="{% url 'coupons' %}" class="text-secondary text-decoration-none">Offers & Coupons</a></li>
                 </ul>
+            </div>
+
+            <!-- Column 4 -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <h5 class="text-white fw-bold mb-4">Newsletter</h5>
+                <p class="text-secondary">Subscribe to receive updates, access to exclusive deals, and more.</p>
+                <div class="input-group mt-3">
+                    <input type="email" class="form-control bg-dark border-secondary text-white" placeholder="Enter your email address" style="border-radius: 8px 0 0 8px;">
+                    <button class="btn" style="background: #ff523b; color: white; border-radius: 0 8px 8px 0;margin: 5px; border: none;">Subscribe</button>
+                </div>
             </div>
 
         </div>
 
         <!-- Divider -->
-        <hr class="my-4" style="background:#b5b5b5;">
+        <hr class="mt-5 mb-4 border-secondary opacity-50">
 
         <!-- Copyright -->
-        <p class="text-center mb-0">© 2025 - Ajmal Mubarak</p>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+            <p class="text-secondary small mb-0">© 2026 Football Store. All rights reserved.</p>
+            <div class="mt-3 mt-md-0 d-flex gap-3">
+                <span class="text-secondary small" style="cursor: pointer;">Privacy Policy</span>
+                <span class="text-secondary small" style="cursor: pointer;">Terms of Service</span>
+            </div>
+        </div>
 
     </div>
 </div>
+<style>
+.hover-opacity-100:hover { opacity: 1 !important; color: #ff523b !important; transform: scale(1.1); transition: 0.3s ease; }
+.footer-links a:hover { color: #ff523b !important; padding-left: 6px; transition: 0.3s ease; }
+.footer-links a { transition: 0.3s ease; }
+body.dark-mode .footer { background: #050505 !important; }
+</style>

@@ -188,7 +188,8 @@ body.dark-mode .checkout-container .form-check-label {
                 <p class="text-muted">Qty: {{ quantity }}</p>
                 {% if buy_size %}<p class="text-muted">Size: <strong>{{ buy_size }}</strong></p>{% endif %}
                 <p class="text-muted">Price: ₹{{ product.price|floatformat:2 }}</p>
-                <p class="fw-bold text-danger">₹{{ subtotal }}</p>
+                <p class="text-muted">Shipping: ₹{{ shipping_fee }}</p>
+                <p class="fw-bold text-danger">Total: ₹{{ total }}</p>
             </div>
         </div>
     </div>
@@ -256,14 +257,10 @@ body.dark-mode .checkout-container .form-check-label {
 
         <div class="form-check mt-2">
           <input class="form-check-input" type="radio"
-                 name="payment_method" value="SIMULATED" disabled>
+                 name="payment_method" value="RAZORPAY">
           <label class="form-check-label">
-            Online Payment (UPI / Card) (Not Completed! Working on it)
+            Online Payment (UPI / Card via Razorpay)
           </label>
-        </div>
-
-        <div class="alert alert-info mt-3" style="font-size:14px;">
-          <strong>Demo Mode:</strong> Online payments are simulated for project purposes.
         </div>
 
         <button type="submit" class="btn btn-success w-100 mt-3" id="place-order-btn">

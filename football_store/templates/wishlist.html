@@ -30,7 +30,11 @@
                     <!-- Image Container -->
                     <div class="wishlist-image-container">
                         <a href="{% url 'product_details' item.product.slug %}">
+                            {% if item.product.main_image %}
                             <img src="{{ item.product.main_image.url }}" alt="{{ item.product.name }}" class="wishlist-image">
+                            {% else %}
+                            <img src="{% static 'images/no-image.png' %}" alt="{{ item.product.name }}" class="wishlist-image">
+                            {% endif %}
                         </a>
                         <button class="wishlist-remove-btn" data-item-id="{{ item.id }}" data-product-id="{{ item.product.id }}" onclick="removeFromWishlistAJAX(event)" title="Remove from wishlist">
                             <i class="fa fa-times"></i>
@@ -43,16 +47,29 @@
                             <h3 class="product-title">{{ item.product.name }}</h3>
                         </a>
                         
-                        <p class="product-category">{{ item.product.get_category_display }}</p>
+                        <p class="product-category">{{ item.product.category.name }}</p>
                         
                         <div class="product-price">
                             <span class="price">₹{{ item.product.price }}</span>
                         </div>
 
-                        <!-- Delivery Info -->
-                        <div class="delivery-badge">
-                            <i class="fa fa-truck"></i> Free Delivery
-                        </div>
+<!-- Delivery Info Badge -->
+{% load tz %}
+{% now "Y-m-d" as today %}
+<div style="background: #f0f7f0; border: 1px solid #90ee90; border-radius: 8px; padding: 12px 16px; margin: 12px 0; display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 18px;">🚚</span>
+    <div>
+        <div style="font-size: 12px; color: #666; margin-bottom: 2px;">SHIPPING: ₹12</div>
+        <div style="font-weight: 600; color: #1e7e34; font-size: 14px;" id="deliveryDate">Delivery by Feb 03, 2026</div>
+    </div>
+</div>
+<script>
+    // Calculate delivery date (7 days from today)
+    const today = new Date();
+    const deliveryDate = new Date(today.getTime() + (7 * 24 * 60 * 60 * 1000));
+    const options = { month: 'short', day: 'numeric', year: 'numeric' };
+    document.getElementById('deliveryDate').textContent = 'Delivery by ' + deliveryDate.toLocaleDateString('en-US', options);
+</script>
 
                         <!-- Action Buttons -->
                         <div class="wishlist-actions">

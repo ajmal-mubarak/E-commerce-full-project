@@ -32,6 +32,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    "jazzmin",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -107,12 +108,8 @@ WSGI_APPLICATION = 'football_store.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'db_store',  
-        'USER': 'postgres',    
-        'PASSWORD': 'ajmal1003', 
-        'HOST': 'localhost',
-        'PORT': '5433', 
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -156,4 +153,7 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Razorpay Configuration
+RAZORPAY_KEY_ID = 'rzp_test_SXP9KMAgMeQSHk'
+RAZORPAY_KEY_SECRET = 'gyJISVxaqIknOBtg9mim4Nfq'
 

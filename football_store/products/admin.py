@@ -6,9 +6,18 @@ from .models import Product, ProductImage, ProductSize, Category
 # -------------------------
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug")
+    list_display = ("name", "slug", "sizes")
     prepopulated_fields = {"slug": ("name",)}
     search_fields = ("name",)
+    fieldsets = (
+        ('Category Information', {
+            'fields': ('name', 'slug', 'image')
+        }),
+        ('Sizes', {
+            'fields': ('sizes',),
+            'description': 'Enter sizes separated by commas (e.g., S,M,L,XL or 5,6,7,8,9 or Free Size)'
+        }),
+    )
 
 
 # -------------------------
@@ -40,9 +49,10 @@ class ProductAdmin(admin.ModelAdmin):
         "is_featured", 
         "is_live", 
         "created_at",
+        "stock",
         "get_sizes_display"
     )
-    list_filter = ("category", "is_featured", "is_live")
+    list_filter = ("is_featured", "is_live", "category")
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
     ordering = ("-created_at",)

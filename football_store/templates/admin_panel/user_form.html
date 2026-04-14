@@ -1,9 +1,0 @@
-{% extends 'admin_panel/base_admin.html' %}
-{% block content %}
-<h3>Edit User: {{ user_obj.username }}</h3>
-<form method="post">{% csrf_token %}
-  {{ form.as_p }}
-  <button class="btn btn-success">Save</button>
-  <a class="btn btn-secondary" href="{% url 'admin_panel:users_list' %}">Back</a>
-</form>
-{% endblock %}

@@ -2,8 +2,9 @@ from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 
 from cart.utils import get_or_create_user_cart, get_or_create_session_cart
-from .models import Product, ProductImage, ProductSize
+from .models import Product, ProductImage, ProductSize, Category
 from django.db.models import Q
+from django.db.models.functions import Random
 from wishlist.models import WishlistItem
 
 
@@ -51,8 +52,17 @@ def products_page(request):
         for item in cart_items
     }
 
+    # Filters
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
+
     if category_slug:
-        products = products.filter(category__iexact=category_slug)
+        products = products.filter(category__slug=category_slug)
+    
+    if min_price:
+        products = products.filter(price__gte=min_price)
+    if max_price:
+        products = products.filter(price__lte=max_price)
 
     if sort == "price":
         products = products.order_by("price")
@@ -60,21 +70,32 @@ def products_page(request):
         products = products.order_by("-price")
     elif sort == "newest":
         products = products.order_by("-created_at")
+    elif sort == "random":
+        products = products.annotate(random_order=Random()).order_by("random_order")
     else:
-        products = products.order_by("-id")
+        # Default: random sort
+        products = products.annotate(random_order=Random()).order_by("random_order")
+        sort = "random"
 
     wishlist_product_ids = []
     if request.user.is_authenticated:
         wishlist_product_ids = WishlistItem.objects.filter(
             wishlist__user=request.user
         ).values_list('product_id', flat=True)
-
+    
+    categories = Category.objects.all()
 
     paginator = Paginator(products, 8)
     page = request.GET.get("page")
     products = paginator.get_page(page)
 
-    return render(request, "products.html", {"products": products,'wishlist_product_ids': wishlist_product_ids,"cart_product_map": cart_product_map, "sort": sort})
+    return render(request, "products.html", {
+        "products": products,
+        'wishlist_product_ids': wishlist_product_ids,
+        "cart_product_map": cart_product_map, 
+        "sort": sort,
+        "categories": categories
+    })
 
 
 
@@ -108,7 +129,7 @@ def product_details(request, slug):
     related_products = Product.objects.filter(
         category=product.category,
         is_live=True
-    ).exclude(id=product.id)[:4]   # limit 4
+    ).exclude(id=product.id)[:16]   # limit 16
 
     wishlist_product_ids = []
     if request.user.is_authenticated:

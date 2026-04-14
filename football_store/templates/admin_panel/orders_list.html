@@ -1,29 +1,212 @@
 {% extends 'admin_panel/base_admin.html' %}
 {% block content %}
-<h3>Orders</h3>
-<table class="table">
-  <thead><tr><th>ID</th><th>User</th><th>Total</th><th>Status</th><th>ordered_at</th><th></th></tr></thead>
-  <tbody>
-    {% for o in orders %}
-    <tr>
-      <td>{{ o.id }}</td>
-      <td>{{ o.user.username }}</td>
-      <td>₹{{ o.total_amount }}</td>
-      <td>
-        {% if o.status == 'delivered' %}
-          <span class="badge bg-success">Delivered</span>
-        {% elif o.status == 'cancelled' %}
-          <span class="badge bg-danger">Cancelled</span>
-        {% elif o.status == 'shipped' %}
-          <span class="badge bg-info">Shipped</span>
-        {% else %}
-          <span class="badge bg-warning text-dark">Processing</span>
-        {% endif %}
-      </td>
-      <td>{{ o.created_at }}</td>
-      <td><a class="btn btn-sm btn-outline-primary" href="{% url 'admin_panel:order_detail' o.id %}">View</a></td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="page-title mb-0">Orders</h3>
+  <div class="d-flex gap-2">
+      <button type="submit" form="bulkDeleteForm" class="btn btn-danger rounded-pill px-4 d-none" id="bulkDeleteBtn" onclick="return confirm('Are you sure you want to delete selected orders?')">
+          <i class="fa fa-trash me-2"></i> Delete Selected (<span id="selectedCount">0</span>)
+      </button>
+      <button class="btn btn-light rounded-pill px-4 border shadow-sm" data-bs-toggle="modal" data-bs-target="#filterModal">
+        <i class="fa fa-filter me-2"></i> Filter
+      </button>
+  </div>
+</div>
+
+<div class="content-card">
+  <div class="table-responsive">
+    <form action="{% url 'admin_panel:orders_bulk_delete' %}" method="post" id="bulkDeleteForm">
+        {% csrf_token %}
+        <table class="table-custom">
+          <thead>
+            <tr>
+              <th style="width: 40px;"><input type="checkbox" class="form-check-input" id="selectAll"></th>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in orders %}
+            <tr>
+              <td><input type="checkbox" name="selected_ids" value="{{ o.id }}" class="form-check-input item-checkbox"></td>
+              <td><span class="text-muted">#{{ o.id }}</span></td>
+              <td class="fw-bold">{{ o.user.username }}</td>
+              <td class="fw-bold">₹{{ o.total_amount }}</td>
+              <td>
+                {% if o.status == 'delivered' %}
+                <span class="badge badge-soft-success">Delivered</span>
+                {% elif o.status == 'cancelled' %}
+                <span class="badge badge-soft-danger">Cancelled</span>
+                {% elif o.status == 'shipped' %}
+                <span class="badge badge-soft-info">Shipped</span>
+                {% else %}
+                <span class="badge badge-soft-warning">Processing</span>
+                {% endif %}
+              </td>
+              <td class="text-muted">{{ o.created_at|date:"M d, Y" }}</td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#orderViewModal{{ o.id }}">
+                  <i class="fa fa-eye"></i> View
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+    </form>
+  </div>
+</div>
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Filter Orders</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="get" action="">
+        <div class="modal-body">
+            {% if search_query %}
+            <input type="hidden" name="q" value="{{ search_query }}">
+            {% endif %}
+            
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-bold text-uppercase">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="processing" {% if request.GET.status == 'processing' %}selected{% endif %}>Processing</option>
+                    <option value="shipped" {% if request.GET.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                    <option value="delivered" {% if request.GET.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                    <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Min Total</label>
+                    <input type="number" name="min_total" class="form-control" value="{{ request.GET.min_total }}">
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Max Total</label>
+                    <input type="number" name="max_total" class="form-control" value="{{ request.GET.max_total }}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-bold text-uppercase">Date Preset</label>
+                <select name="date_range_preset" class="form-select">
+                    <option value="custom" {% if request.GET.date_range_preset == 'custom' %}selected{% endif %}>Custom Range</option>
+                    <option value="7d" {% if request.GET.date_range_preset == '7d' %}selected{% endif %}>Last 7 Days</option>
+                    <option value="30d" {% if request.GET.date_range_preset == '30d' %}selected{% endif %}>Last Month</option>
+                    <option value="365d" {% if request.GET.date_range_preset == '365d' %}selected{% endif %}>Last Year</option>
+                    <option value="this_month" {% if request.GET.date_range_preset == 'this_month' %}selected{% endif %}>This Month</option>
+                    <option value="this_year" {% if request.GET.date_range_preset == 'this_year' %}selected{% endif %}>This Year</option>
+                </select>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Start Date</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">End Date</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ request.GET.date_to }}">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-top-0">
+            <a href="." class="btn btn-light">Clear Filters</a>
+            <button type="submit" class="btn btn-primary px-4">Apply Filters</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.item-checkbox');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const selectedCount = document.getElementById('selectedCount');
+
+        function updateState() {
+            const checkedCount = document.querySelectorAll('.item-checkbox:checked').length;
+            selectedCount.textContent = checkedCount;
+            if (checkedCount > 0) {
+                bulkDeleteBtn.classList.remove('d-none');
+            } else {
+                bulkDeleteBtn.classList.add('d-none');
+            }
+        }
+
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            updateState();
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                updateState();
+                if (!this.checked) {
+                    selectAll.checked = false;
+                }
+            });
+        });
+    });
+</script>
+
+{% for o in orders %}
+<!-- Order View Modal -->
+<div class="modal fade" id="orderViewModal{{ o.id }}" tabindex="-1" aria-labelledby="orderViewModalLabel{{ o.id }}" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="orderViewModalLabel{{ o.id }}">Order #{{ o.id }} Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label text-muted small fw-bold text-uppercase">Customer</label>
+          <input type="text" class="form-control bg-light" value="{{ o.user.username }} ({{ o.full_name }})" disabled>
+        </div>
+        <div class="mb-3">
+          <label class="form-label text-muted small fw-bold text-uppercase">Contact</label>
+          <input type="text" class="form-control bg-light" value="{{ o.phone }}" disabled>
+        </div>
+        <div class="mb-3">
+          <label class="form-label text-muted small fw-bold text-uppercase">Shipping Address</label>
+          <textarea class="form-control bg-light" rows="2" disabled>{{ o.address }}, {{ o.city }} - {{ o.pincode }}</textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label text-muted small fw-bold text-uppercase">Total Amount</label>
+          <input type="text" class="form-control bg-light fw-bold text-primary" value="₹{{ o.total_amount }}" disabled>
+        </div>
+        <div class="mb-2">
+          <label class="form-label text-muted small fw-bold text-uppercase">Update Status</label>
+          <form method="post" action="{% url 'admin_panel:order_change_status' o.id %}">
+            {% csrf_token %}
+            <div class="input-group">
+              <select name="status" class="form-select">
+                <option value="processing" {% if o.status == 'processing' %}selected{% endif %}>Processing</option>
+                <option value="shipped" {% if o.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                <option value="delivered" {% if o.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                <option value="cancelled" {% if o.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+              </select>
+              <button type="submit" class="btn btn-primary px-3">Update</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
 {% endblock %}

@@ -25,5 +25,8 @@ urlpatterns = [
     path("my-orders/", views.my_orders, name="my_orders"),
     path("my-orders/filter/", views.filter_search_orders, name="filter_search_orders"),
     path("payment/simulated/<int:order_id>/", views.simulated_payment, name="simulated_payment"),
+    path("payment/razorpay/<int:order_id>/", views.razorpay_payment, name="razorpay_payment"),
+    path("payment/razorpay-callback/<int:order_id>/", views.razorpay_callback, name="razorpay_callback"),
+    path("cancel/<int:order_id>/", views.cancel_order, name="cancel_order"),
 ]
 

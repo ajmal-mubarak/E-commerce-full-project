@@ -65,3 +65,10 @@ class Coupon(models.Model):
     def __str__(self):
         return self.code
 
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        if self.expiry_date and self.expiry_date < timezone.now().date():
+            return True
+        return False
+

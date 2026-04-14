@@ -1,97 +1,252 @@
 {% extends 'admin_panel/base_admin.html' %}
+{% block title %}{{ action }} Product{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-
-     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>{{ action }} Product</h3>
-        <a href="{% url 'admin_panel:products_list' %}" class="btn btn-secondary">Back To Products</a>
-    </div>
-    
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        
-        <div class="row">
-            <!-- LEFT SIDE: Main Product Form -->
-            <div class="col-md-6">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title mb-3">Product Details</h5>
-                        {{ form.as_p }}
-                        <button type="submit" class="btn btn-success mt-3">{{ action }}</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RIGHT SIDE: Images + Sizes -->
-            <div class="col-md-6">
-                <!-- GALLERY IMAGES -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title mb-3">Gallery Images</h5>
-                        {{ img_formset.management_form }}
-                        <div class="row g-3">
-                            {% for f in img_formset %}
-                                <div class="col-md-6">
-                                    <div class="border rounded p-2 h-100">
-                                        {{ f.id }}         <!-- hidden -->
-                                        {{ f.product }}    <!-- hidden -->
-                                        {{ f.ORDER }}      <!-- hidden -->
-
-                                        <div class="mb-2">
-                                            <label class="form-label">Image:</label>
-                                            {{ f.image }}
-                                        </div>
-
-                                        {% if f.instance.image %}
-                                            <img src="{{ f.instance.image.url }}" class="img-thumbnail mb-2" style="max-width: 100%; height: 100px; object-fit: cover;">
-                                        {% endif %}
-
-                                        {% if f.DELETE %}
-                                            <div class="form-check">
-                                                {{ f.DELETE }}
-                                                <label class="form-check-label">Delete</label>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SIZE FORMS -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title mb-3">Sizes</h5>
-                        {{ size_formset.management_form }}
-                        <div class="row g-3">
-                            {% for f in size_formset %}
-                                <div class="col-md-6">
-                                    <div class="border rounded p-2 h-100">
-                                        {{ f.id }}     <!-- hidden -->
-                                        {{ f.product }} <!-- hidden -->
-                                        {{ f.ORDER }}   <!-- hidden -->
-
-                                        <div class="mb-2">
-                                            <label class="form-label">Size:</label>
-                                            {{ f.size }}
-                                        </div>
-
-                                        {% if f.DELETE %}
-                                            <div class="form-check">
-                                                {{ f.DELETE }}
-                                                <label class="form-check-label">Delete</label>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </form>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">{{ action }} Product</h3>
+    <a href="{% url 'admin_panel:products_list' %}" class="btn btn-outline-secondary rounded-pill px-3">
+        <i class="fa fa-arrow-left me-1"></i> Back
+    </a>
 </div>
+
+<style>
+    .hidden-row {
+        display: none !important;
+    }
+
+    .form-section-title {
+        font-size: 0.85rem;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+    }
+</style>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="row">
+        <!-- LEFT COLUMN: Main Info & Gallery -->
+        <div class="col-lg-8">
+
+            <!-- Basic Details -->
+            <div class="content-card mb-4">
+                <h6 class="text-uppercase fw-bold form-section-title">General Information</h6>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold small text-dark">Product Name</label>
+                    {{ form.name }}
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-dark">Price</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">₹</span>
+                            {{ form.price }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-dark">Stock</label>
+                        {{ form.stock }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-dark">Category</label>
+                        {{ form.category }}
+                    </div>
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label fw-bold small text-dark">Description</label>
+                    {{ form.description }}
+                </div>
+            </div>
+
+            <!-- Gallery Images -->
+            <div class="content-card mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="text-uppercase fw-bold mb-0 form-section-title">Gallery Images</h6>
+                    <span class="badge badge-soft-secondary">Extra Angles</span>
+                </div>
+
+                {{ img_formset.management_form }}
+                <div class="row g-3">
+                    {% for f in img_formset %}
+                    <div class="col-6 col-md-4">
+                        <div class="border rounded-4 p-3 bg-light h-100 position-relative">
+                            {{ f.id }} {{ f.product }} {{ f.ORDER }}
+
+                            {% if f.instance.image %}
+                            <div class="mb-3 text-center position-relative">
+                                <img src="{{ f.instance.image.url }}" class="img-thumbnail border-0 shadow-sm"
+                                    style="height: 120px; width: 100%; object-fit: cover; border-radius: 12px;">
+                                <div class="position-absolute top-0 end-0 p-1">
+                                    <div class="bg-white rounded-circle shadow-sm px-2">
+                                        {{ f.DELETE }} <label class="small text-danger fw-bold">DEL</label>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <div class="mb-0">
+                                <label class="form-label small text-muted">Image {{ forloop.counter }}</label>
+                                {{ f.image }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Publish Actions (Small devices: show here, large devices: moved to bottom of this column or sidebar) -->
+            <div class="content-card d-lg-none mb-4">
+                <h6 class="text-uppercase fw-bold form-section-title text-center">Actions</h6>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg fw-bold rounded-3">Save Product</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: Thumbnail & Sizes -->
+        <div class="col-lg-4">
+
+            <!-- Main Thumbnail -->
+            <div class="content-card mb-4">
+                <h6 class="text-uppercase fw-bold form-section-title">Main Display</h6>
+                {% if form.instance.main_image %}
+                <div class="mb-4 text-center">
+                    <img src="{{ form.instance.main_image.url }}" class="img-fluid rounded-4 shadow-sm border p-1"
+                        style="max-height: 250px; width: 100%; object-fit: contain;">
+                </div>
+                {% endif %}
+                <div class="mb-0">
+                    <label class="form-label fw-bold small text-dark">Primary Image</label>
+                    {{ form.main_image }}
+                </div>
+            </div>
+
+            <!-- Sizes -->
+            <div class="content-card mb-4">
+                <h6 class="text-uppercase fw-bold form-section-title">Inventory Variants</h6>
+                {{ size_formset.management_form }}
+                <div id="size-formset-container" class="vstack gap-2">
+                    {% for f in size_formset %}
+                    <div
+                        class="size-row d-flex align-items-center gap-3 p-2 bg-light rounded-3 {% if not f.instance.pk and not f.size.value %}hidden-row{% endif %}">
+                        {{ f.id }} {{ f.product }} {{ f.ORDER }}
+                        <div class="flex-grow-1">
+                            {{ f.size }}
+                        </div>
+                        {% if f.DELETE %}
+                        <div class="form-check mb-0">
+                            {{ f.DELETE }} <i class="fa fa-trash text-muted small"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Publish Actions Desktop -->
+            <div class="content-card mb-4 d-none d-lg-block border-primary">
+                <h6 class="text-uppercase fw-bold form-section-title">Visibility</h6>
+
+                <div class="form-check form-switch mb-3">
+                    {{ form.is_live }}
+                    <label class="form-check-label fw-bold ms-2">Live Status</label>
+                </div>
+
+                <div class="form-check form-switch mb-4">
+                    {{ form.is_featured }}
+                    <label class="form-check-label fw-bold ms-2">Featured</label>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg fw-bold rounded-3 shadow-sm">Save
+                        Changes</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const categorySelect = document.querySelector('select[name="category"]');
+        const sizeContainer = document.getElementById('size-formset-container');
+
+        if (categorySelect && sizeContainer) {
+            const allSizeRows = sizeContainer.querySelectorAll('.size-row');
+
+            function updateSizeRows(categoryId, initMode = false) {
+                if (!categoryId) {
+                    allSizeRows.forEach(row => {
+                        const input = row.querySelector('input[type="text"]');
+                        if (!input || !input.value) {
+                            row.classList.add('hidden-row');
+                        }
+                    });
+                    return;
+                }
+
+                const url = `/admin_panel/get-category-sizes/${categoryId}/`;
+
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        const suggestedSizes = data.sizes || [];
+                        const numSuggested = suggestedSizes.length;
+
+                        allSizeRows.forEach((row, index) => {
+                            const input = row.querySelector('input[type="text"]');
+                            if (!input) return;
+
+                            const hasValue = input.value.trim() !== '';
+                            const isWithinSuggested = index < numSuggested;
+
+                            if (isWithinSuggested) {
+                                // Always show suggested rows
+                                row.classList.remove('hidden-row');
+                                
+                                // Overwrite if it's a manual category change OR if the field is empty
+                                if (!initMode || !hasValue) {
+                                    input.value = suggestedSizes[index];
+                                }
+                            } else {
+                                // For extra rows (non-suggested)
+                                if (!initMode && hasValue) {
+                                    // Clear values of non-suggested rows on category change
+                                    // unless we want to keep them? User says "old data exist", 
+                                    // so clearing is likely what they want for cleanliness.
+                                    input.value = '';
+                                    row.classList.add('hidden-row');
+                                } else if (hasValue) {
+                                    row.classList.remove('hidden-row');
+                                } else {
+                                    row.classList.add('hidden-row');
+                                }
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching sizes:', error);
+                    });
+            }
+
+            // Initial call for Edit/Add mode (pass true to avoid overwriting existing non-empty values immediately)
+            if (categorySelect.value) {
+                updateSizeRows(categorySelect.value, true);
+            }
+
+            categorySelect.addEventListener('change', function () {
+                updateSizeRows(this.value, false);
+            });
+        }
+    });
+</script>
 {% endblock %}

@@ -253,9 +253,13 @@ def profile_page(request):
             messages.success(request, "Address saved")
             return redirect("profile")
 
+    # Create a dict for easy lookup of address by type
+    address_dict = {addr.address_type: addr for addr in addresses}
+    
     return render(request, "profile.html", {
         "addresses": addresses,
         "address_types": address_types,
+        "address_dict": address_dict,
     })
 
 

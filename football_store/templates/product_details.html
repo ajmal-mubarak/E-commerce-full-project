@@ -327,16 +327,26 @@ body.dark-mode .wishlist-icon {
                 <i class="fa {% if product.id in wishlist_product_ids %}fa-heart{% else %}fa-heart-o{% endif %}"></i>
             </a>
 
+            {% if product.main_image %}
             <img id="mainImage"
                  src="{{ product.main_image.url }}"
                  alt="{{ product.name }}">
+            {% else %}
+             <img id="mainImage"
+                 src="{% static 'images/no-image.png' %}"
+                 alt="{{ product.name }}">
+            {% endif %}
             
             <!-- MAGNIFIER GLASS -->
             <div id="magnifier" class="magnifier-glass"></div>
             
             <!-- ZOOM PREVIEW BOX (right side) -->
             <div class="zoom-preview-box" id="zoomPreview">
+                {% if product.main_image %}
                 <img id="zoomPreviewImg" class="zoom-preview-img" src="{{ product.main_image.url }}" alt="{{ product.name }}">
+                {% else %}
+                <img id="zoomPreviewImg" class="zoom-preview-img" src="{% static 'images/no-image.png' %}" alt="{{ product.name }}">
+                {% endif %}
             </div>
         </div>
     </div>
@@ -348,7 +358,7 @@ body.dark-mode .wishlist-icon {
 <!-- ================= RIGHT: DETAILS ================= -->
 <div class="col-md-6">
 
-<p class="text-muted">Home / {{ product.get_category_display }}</p>
+<p class="text-muted">Home / {{ product.category.name }}</p>
 
 <h2 class="fw-bold">{{ product.name }}</h2>
 <!-- Description -->
@@ -361,7 +371,7 @@ body.dark-mode .wishlist-icon {
 <div style="background: #f0f7f0; border: 1px solid #90ee90; border-radius: 8px; padding: 12px 16px; margin: 12px 0; display: flex; align-items: center; gap: 10px;">
     <span style="font-size: 18px;">🚚</span>
     <div>
-        <div style="font-size: 12px; color: #666; margin-bottom: 2px;">FREE DELIVERY</div>
+        <div style="font-size: 12px; color: #666; margin-bottom: 2px;">SHIPPING: ₹12</div>
         <div style="font-weight: 600; color: #1e7e34; font-size: 14px;" id="deliveryDate">Delivery by Feb 03, 2026</div>
     </div>
 </div>
@@ -373,7 +383,18 @@ body.dark-mode .wishlist-icon {
     document.getElementById('deliveryDate').textContent = 'Delivery by ' + deliveryDate.toLocaleDateString('en-US', options);
 </script>
 
+<!-- Stock Status -->
+<div class="mb-3">
+    {% if product.stock > 0 %}
+        <span class="badge bg-success">In Stock</span>
+        <span class="text-muted ms-2">Available: {{ product.stock }}</span>
+    {% else %}
+        <span class="badge bg-danger">Out of Stock</span>
+    {% endif %}
+</div>
+
 <!-- Size -->
+{% if product.stock > 0 %}
 <div class="my-3">
     <select id="sizeSelect" class="form-select w-50" name="size">
         <option value="" disabled selected>Select Size</option>
@@ -386,7 +407,7 @@ body.dark-mode .wishlist-icon {
 <!-- Quantity -->
 <div class="d-flex align-items-center my-3">
     <button class="btn btn-outline-secondary" onclick="qty(-1)">−</button>
-    <input id="qtyInput" value="1" class="form-control mx-2 text-center" style="width:60px" readonly>
+    <input id="qtyInput" value="1" class="form-control mx-2 text-center" style="width:60px" readonly data-max-stock="{{ product.stock }}">
     <button class="btn btn-outline-secondary" onclick="qty(1)">+</button>
 </div>
 
@@ -405,6 +426,12 @@ body.dark-mode .wishlist-icon {
     <input type="hidden" name="size" id="buySize" value="">
     <button class="btn btn-danger w-100">Buy Now</button>
 </form>
+{% else %}
+<div class="alert alert-danger mt-3">
+    This product is currently out of stock.
+</div>
+<button class="btn btn-secondary w-100" disabled>Out of Stock</button>
+{% endif %}
 
 </div>
 </div>
@@ -414,22 +441,164 @@ body.dark-mode .wishlist-icon {
 <div class="container my-5">
 <h3 class="fw-bold mb-3">Related Products</h3>
 
-<div class="row g-4">
-{% for item in related_products %}
-<div class="col-6 col-md-3">
-<a href="{% url 'product_details' item.slug %}" class="text-decoration-none">
-<div class="card shadow-sm h-100">
-<img src="{{ item.main_image.url }}" class="card-img-top">
-<div class="card-body text-center">
-<h6>{{ item.name }}</h6>
-<p class="text-danger fw-bold">₹ {{ item.price }}</p>
+<div class="related-slider" id="relatedSlider">
+    <div class="related-slider-viewport">
+        <div class="related-slider-track">
+            {% for item in related_products %}
+            <div class="related-slide-item">
+                <a href="{% url 'product_details' item.slug %}" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm position-relative product-card h-100 w-100" >
+                        {% if item.main_image %}
+                        <img src="{{ item.main_image.url }}" class="card-img-top" style="height:250px; object-fit:cover;">
+                        {% else %}
+                        <img src="{% static 'images/no-image.png' %}" class="card-img-top" style="height:250px; object-fit:cover;">
+                        {% endif %}
+                        <div class="card-body text-center">
+                            <h5 class="card-title">{{ item.name }}</h5>
+            {% if item.stock == 0 %}
+            <p class="text-danger small mb-1 fw-bold" style="color: #dc3545 !important;">Out of Stock</p>
+            {% elif item.stock <= 5 %}
+            <p class="text-warning small mb-1 fw-bold" style="color: #ffc107 !important;">{{ item.stock }} left</p>
+            {% else %}
+            <p class="text-success small mb-1 fw-bold" style="color: #198754 !important;">Available: {{ item.stock }}</p>
+            {% endif %}
+                            <p class="fw-bold">${{ item.price }}</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Overlay arrows (left/right) -->
+    <button id="relatedPrevOverlay" class="related-arrow related-arrow-left" aria-label="Previous">‹</button>
+    <button id="relatedNextOverlay" class="related-arrow related-arrow-right" aria-label="Next">›</button>
 </div>
 </div>
-</a>
-</div>
-{% endfor %}
-</div>
-</div>
+
+<style>
+    /* Related Products Slider */
+    .related-slider {
+        position: relative;
+    }
+    
+    .related-slider-viewport {
+        overflow: hidden;
+    }
+    
+    .related-slider-track {
+        display: flex;
+        max-width: 900px;
+        transition: transform 0.3s ease;
+    }
+    
+    .related-slide-item {
+        display: flex;
+        flex-direction: column;
+        min-width: calc(25% - 15px);
+        flex: 0 0 calc(25% - 15px);
+    }
+    
+    .related-slide-item a {
+        height: 100%;
+        display: flex;
+        text-decoration: none;
+    }
+    
+    .related-slide-item .card {
+        width: 100%;
+    }
+    
+    /* Arrow buttons - Match index page style */
+    .related-arrow {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1000;
+        background: #007bff;
+        border: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: #fff;
+        opacity: 0.8;
+        cursor: pointer;
+        transition: opacity 0.2s ease, transform 0.15s ease;
+    }
+    
+    .related-arrow:hover {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.05);
+    }
+    
+    .related-arrow:active {
+        transform: translateY(-48%) scale(0.98);
+    }
+    
+    .related-arrow-left {
+        left: 8px;
+    }
+    
+    .related-arrow-right {
+        right: 8px;
+    }
+    
+    /* Tablet: 3 items per row */
+    @media (max-width: 1200px) {
+        .related-slide-item {
+            min-width: calc(33.333% - 14px);
+            flex: 0 0 calc(33.333% - 14px);
+        }
+    }
+    
+    /* Tablet: 2 items per row */
+    @media (max-width: 992px) {
+        .related-slide-item {
+            min-width: calc(50% - 10px);
+            flex: 0 0 calc(50% - 10px);
+        }
+    }
+    
+    /* Mobile: Show 2 items per slide, use slider if 2 or more */
+    @media (max-width: 768px) {
+        
+        .related-slide-item {
+            min-width: calc(50% - 7.5px);
+            flex: 0 0 calc(50% - 7.5px);
+        }
+        
+        /* Hide arrows by default */
+        .related-arrow {
+            display: none !important;
+        }
+        
+        /* If 2 or more items, show arrows and enable slider */
+        .related-slider:has(.related-slide-item:nth-child(n+2)) .related-arrow {
+            display: flex !important;
+        }
+        
+        /* If 2 or more items, keep overflow hidden for slider */
+        .related-slider:has(.related-slide-item:nth-child(n+2)) .related-slider-viewport {
+            overflow: hidden;
+        }
+        
+        /* If only 1 item, wrap and center with max width */
+        .related-slider:not(:has(.related-slide-item:nth-child(2))) .related-slider-viewport {
+            max-width: 350px;
+            margin: 0 auto;
+        }
+        
+        .related-slider:not(:has(.related-slide-item:nth-child(2))) .related-slider-track {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+    }
+</style>
 
 <!-- ================= ZOOM MODAL ================= -->
 <div class="modal fade" id="zoomModal" tabindex="-1">
@@ -564,7 +733,18 @@ function setMainImage(img) {
 // Quantity
 function qty(n) {
     let q = document.getElementById("qtyInput");
-    q.value = Math.max(1, parseInt(q.value) + n);
+    let maxStock = parseInt(q.getAttribute('data-max-stock')) || 100;
+    let currentVal = parseInt(q.value);
+    let newVal = currentVal + n;
+    
+    if (newVal > maxStock) {
+        newVal = maxStock;
+        // Optional: Show toast or visual feedback
+    } else if (newVal < 1) {
+        newVal = 1;
+    }
+    
+    q.value = newVal;
     document.getElementById("cartQty").value = q.value;
     document.getElementById("buyQty").value = q.value;
 }
@@ -637,6 +817,39 @@ document.addEventListener('keydown', (e) => e.key === 'Escape' && closeZoomModal
 mainImage.addEventListener('click', function() {
     openZoomModal(this.src);
 });
+
+// Related Products Slider Touch Swipe Support
+const relatedSlider = document.getElementById('relatedSlider');
+if (relatedSlider) {
+    const relatedViewport = relatedSlider.querySelector('.related-slider-viewport');
+    const relatedTrack = relatedSlider.querySelector('.related-slider-track');
+    let relatedTouchStartX = 0;
+    let relatedTouchEndX = 0;
+    
+    relatedViewport.addEventListener('touchstart', (e) => {
+        relatedTouchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    relatedViewport.addEventListener('touchend', (e) => {
+        relatedTouchEndX = e.changedTouches[0].screenX;
+        handleRelatedSwipe();
+    }, { passive: true });
+    
+    function handleRelatedSwipe() {
+        const diff = relatedTouchStartX - relatedTouchEndX;
+        if (Math.abs(diff) > 50) { // Minimum swipe distance
+            if (diff > 0) {
+                // Swipe left -> next
+                const nextBtn = relatedSlider.querySelector('#relatedNextOverlay');
+                if (nextBtn) nextBtn.click();
+            } else {
+                // Swipe right -> prev
+                const prevBtn = relatedSlider.querySelector('#relatedPrevOverlay');
+                if (prevBtn) prevBtn.click();
+            }
+        }
+    }
+}
 
 qty(0);
 </script>

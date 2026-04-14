@@ -371,6 +371,31 @@ function initCategorySlider() {
     bindControl(btnPrev); bindControl(btnPrevOverlay);
     bindControlNext(btnNext); bindControlNext(btnNextOverlay);
 
+    // Touch swipe support
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    viewport.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    viewport.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+    
+    function handleSwipe() {
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 50) { // Minimum swipe distance
+            if (diff > 0) {
+                goTo(index + 1); // Swipe left -> next
+            } else {
+                goTo(index - 1); // Swipe right -> prev
+            }
+            resetAuto();
+        }
+    }
+
     // Auto-play (advance by one item)
     let auto = setInterval(() => { goTo(index + 1); }, 3000);
     function resetAuto() { clearInterval(auto); auto = setInterval(() => { goTo(index + 1); }, 3000); }
@@ -390,6 +415,338 @@ function initCategorySlider() {
                 goTo(0);
             } else {
                 // adjust position using new viewport width
+                goTo(index);
+            }
+        }, 150);
+    });
+}
+
+/* ================= LATEST PRODUCTS SLIDER ================= */
+function initLatestSlider() {
+    const container = document.getElementById('latestSlider');
+    if (!container) return;
+
+    const rawItems = Array.from(container.querySelectorAll('.latest-slide-item'));
+    if (rawItems.length < 4) {
+        // If less than 4 items, just display them in a grid without slider
+        if (!document.getElementById('latest-grid-styles')) {
+            const s = document.createElement('style');
+            s.id = 'latest-grid-styles';
+            s.textContent = `
+                .latest-slider-viewport { overflow: visible; }
+                .latest-slider-track { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; width: 100%; }
+                .latest-slide-item { box-sizing: border-box; }
+                .latest-arrow { display: none !important; }
+            `;
+            document.head.appendChild(s);
+        }
+        return;
+    }
+
+    const viewport = container.querySelector('.latest-slider-viewport');
+    const track = container.querySelector('.latest-slider-track');
+
+    // Inject styles once
+    if (!document.getElementById('latest-slider-styles')) {
+        const s = document.createElement('style');
+        s.id = 'latest-slider-styles';
+        s.textContent = `
+            .latest-slider { position: relative; }
+            .latest-slider-viewport { overflow: hidden; }
+            .latest-slider-track { display: flex; width: 100%; transition: transform 0.5s ease; will-change: transform; }
+            .latest-slide-item { box-sizing: border-box; padding: 0 0.5rem; }
+            /* Overlay arrows */
+            .latest-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1000; background: #007bff; border: none; width: 44px; height: 44px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff; opacity:0.8; transition: opacity 0.2s ease, transform 0.15s ease; }
+            .latest-arrow:hover { opacity: 1; transform: translateY(-50%) scale(1.05); }
+            .latest-arrow:active { transform: translateY(-48%) scale(0.98); }
+            .latest-arrow-left { left: 8px; }
+            .latest-arrow-right { right: 8px; }
+            @media (max-width: 768px) {
+                /* perView handled in JS for 2 items on mobile */
+            }
+            @media (max-width: 576px) {
+                /* perView handled in JS for 2 items on mobile */
+            }
+        `;
+        document.head.appendChild(s);
+    }
+
+    // Determine items per slide depending on width
+    function itemsPerView() {
+        const w = window.innerWidth;
+        if (w < 768) return 2;  // Mobile: 2 items
+        return 4;  // Desktop: 4 items
+    }
+
+    let perView = itemsPerView();
+
+    // Build track as a single flex row of items
+    function buildSlides() {
+        track.innerHTML = '';
+        rawItems.forEach((itm) => {
+            itm.style.flex = '';
+            itm.style.maxWidth = '';
+            track.appendChild(itm);
+        });
+
+        // set widths — use the smaller of perView and total items so cards fully fit
+        const totalItems = rawItems.length;
+        const cols = Math.min(perView, totalItems) || 1;
+        const itemWidthPercent = 100 / cols;
+        track.querySelectorAll('.latest-slide-item').forEach(itm => {
+            itm.style.flex = `0 0 ${itemWidthPercent}%`;
+            itm.style.maxWidth = `${itemWidthPercent}%`;
+        });
+    }
+
+    buildSlides();
+
+    let index = 0; // index of first visible item
+    function goTo(idx) {
+        const items = track.querySelectorAll('.latest-slide-item');
+        if (items.length === 0) return;
+
+        const maxIndex = Math.max(0, items.length - perView);
+
+        // Wrap around for continuous looping
+        if (idx > maxIndex) {
+            index = 0;
+        } else if (idx < 0) {
+            index = maxIndex;
+        } else {
+            index = idx;
+        }
+
+        const itemWidthPx = viewport.clientWidth / perView;
+        const offset = index * itemWidthPx;
+        track.style.transform = `translateX(-${offset}px)`;
+    }
+
+    // Controls (overlay)
+    const btnPrevOverlay = container.querySelector('#latestPrevOverlay');
+    const btnNextOverlay = container.querySelector('#latestNextOverlay');
+
+    function bindControl(btn) {
+        if (!btn) return;
+        btn.addEventListener('click', () => { goTo(index - 1); resetAuto(); });
+    }
+
+    function bindControlNext(btn) {
+        if (!btn) return;
+        btn.addEventListener('click', () => { goTo(index + 1); resetAuto(); });
+    }
+
+    bindControl(btnPrevOverlay);
+    bindControlNext(btnNextOverlay);
+
+    // Touch swipe support
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    viewport.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    viewport.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+    
+    function handleSwipe() {
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 50) { // Minimum swipe distance
+            if (diff > 0) {
+                goTo(index + 1); // Swipe left -> next
+            } else {
+                goTo(index - 1); // Swipe right -> prev
+            }
+            resetAuto();
+        }
+    }
+
+    // Auto-play (advance by one item)
+    let auto = setInterval(() => { goTo(index + 1); }, 3000);
+    function resetAuto() { clearInterval(auto); auto = setInterval(() => { goTo(index + 1); }, 3000); }
+
+    // Rebuild on resize if perView changes
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            const newPer = itemsPerView();
+            if (newPer !== perView) {
+                perView = newPer;
+                const currentItems = Array.from(container.querySelectorAll('.latest-slide-item'));
+                rawItems.length = 0; 
+                currentItems.forEach(it => rawItems.push(it));
+                buildSlides();
+                goTo(0);
+            } else {
+                goTo(index);
+            }
+        }, 150);
+    });
+}
+
+/* ================= FEATURED PRODUCTS SLIDER ================= */
+function initFeaturedSlider() {
+    const container = document.getElementById('featuredSlider');
+    if (!container) return;
+
+    const rawItems = Array.from(container.querySelectorAll('.featured-slide-item'));
+    if (rawItems.length < 4) {
+        // If less than 4 items, just display them in a grid without slider
+        if (!document.getElementById('featured-grid-styles')) {
+            const s = document.createElement('style');
+            s.id = 'featured-grid-styles';
+            s.textContent = `
+                .featured-slider-viewport { overflow: visible; }
+                .featured-slider-track { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; width: 100%; }
+                .featured-slide-item { box-sizing: border-box; }
+                .featured-arrow { display: none !important; }
+            `;
+            document.head.appendChild(s);
+        }
+        return;
+    }
+
+    const viewport = container.querySelector('.featured-slider-viewport');
+    const track = container.querySelector('.featured-slider-track');
+
+    // Inject styles once
+    if (!document.getElementById('featured-slider-styles')) {
+        const s = document.createElement('style');
+        s.id = 'featured-slider-styles';
+        s.textContent = `
+            .featured-slider { position: relative; }
+            .featured-slider-viewport { overflow: hidden; }
+            .featured-slider-track { display: flex; width: 100%; transition: transform 0.5s ease; will-change: transform; }
+            .featured-slide-item { box-sizing: border-box; padding: 0 0.5rem; }
+            /* Overlay arrows */
+            .featured-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1000; background: #007bff; border: none; width: 44px; height: 44px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff; opacity:0.8; transition: opacity 0.2s ease, transform 0.15s ease; }
+            .featured-arrow:hover { opacity: 1; transform: translateY(-50%) scale(1.05); }
+            .featured-arrow:active { transform: translateY(-48%) scale(0.98); }
+            .featured-arrow-left { left: 8px; }
+            .featured-arrow-right { right: 8px; }
+            @media (max-width: 768px) {
+                /* perView handled in JS for 2 items on mobile */
+            }
+            @media (max-width: 576px) {
+                /* perView handled in JS for 2 items on mobile */
+            }
+        `;
+        document.head.appendChild(s);
+    }
+
+    // Determine items per slide depending on width
+    function itemsPerView() {
+        const w = window.innerWidth;
+        if (w < 768) return 2;  // Mobile: 2 items
+        return 4;  // Desktop: 4 items
+    }
+
+    let perView = itemsPerView();
+
+    // Build track as a single flex row of items
+    function buildSlides() {
+        track.innerHTML = '';
+        rawItems.forEach((itm) => {
+            itm.style.flex = '';
+            itm.style.maxWidth = '';
+            track.appendChild(itm);
+        });
+
+        // set widths
+        const itemWidthPercent = 100 / perView;
+        track.querySelectorAll('.featured-slide-item').forEach(itm => {
+            itm.style.flex = `0 0 ${itemWidthPercent}%`;
+            itm.style.maxWidth = `${itemWidthPercent}%`;
+        });
+    }
+
+    buildSlides();
+
+    let index = 0; // index of first visible item
+    function goTo(idx) {
+        const items = track.querySelectorAll('.featured-slide-item');
+        if (items.length === 0) return;
+
+        const maxIndex = Math.max(0, items.length - perView);
+
+        // Wrap around for continuous looping
+        if (idx > maxIndex) {
+            index = 0;
+        } else if (idx < 0) {
+            index = maxIndex;
+        } else {
+            index = idx;
+        }
+
+        const itemWidthPx = viewport.clientWidth / perView;
+        const offset = index * itemWidthPx;
+        track.style.transform = `translateX(-${offset}px)`;
+    }
+
+    // Controls (overlay)
+    const btnPrevOverlay = container.querySelector('#featPrevOverlay');
+    const btnNextOverlay = container.querySelector('#featNextOverlay');
+
+    function bindControl(btn) {
+        if (!btn) return;
+        btn.addEventListener('click', () => { goTo(index - 1); resetAuto(); });
+    }
+
+    function bindControlNext(btn) {
+        if (!btn) return;
+        btn.addEventListener('click', () => { goTo(index + 1); resetAuto(); });
+    }
+
+    bindControl(btnPrevOverlay);
+    bindControlNext(btnNextOverlay);
+
+    // Touch swipe support
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    viewport.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    viewport.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+    
+    function handleSwipe() {
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 50) { // Minimum swipe distance
+            if (diff > 0) {
+                goTo(index + 1); // Swipe left -> next
+            } else {
+                goTo(index - 1); // Swipe right -> prev
+            }
+            resetAuto();
+        }
+    }
+
+    // Auto-play (advance by one item)
+    let auto = setInterval(() => { goTo(index + 1); }, 3000);
+    function resetAuto() { clearInterval(auto); auto = setInterval(() => { goTo(index + 1); }, 3000); }
+
+    // Rebuild on resize if perView changes
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            const newPer = itemsPerView();
+            if (newPer !== perView) {
+                perView = newPer;
+                const currentItems = Array.from(container.querySelectorAll('.featured-slide-item'));
+                rawItems.length = 0; 
+                currentItems.forEach(it => rawItems.push(it));
+                buildSlides();
+                goTo(0);
+            } else {
                 goTo(index);
             }
         }, 150);
@@ -496,11 +853,12 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(data => {
                 if (data.success) {
                     // Update ALL cart badges (mobile + desktop)
-                    const badges = document.querySelectorAll("#cart-count");
+                    const badges = document.querySelectorAll("#cart-count, .cart-badge");
                     if (badges.length > 0) {
                         // Update existing badges
                         badges.forEach(badge => {
                             badge.innerText = data.cart_count;
+                            badge.style.display = data.cart_count === 0 ? 'none' : '';
                         });
                     } else {
                         // Create badges if they don't exist
@@ -510,6 +868,14 @@ document.addEventListener("DOMContentLoaded", function () {
                             newBadge.className = "cart-badge";
                             newBadge.innerText = data.cart_count;
                             cartLink.appendChild(newBadge);
+                        });
+                    }
+
+                    // Also update cart page header badge (if present) with pluralization
+                    const headerBadges = document.querySelectorAll('.cart-header .badge');
+                    if (headerBadges.length > 0) {
+                        headerBadges.forEach(hb => {
+                            hb.textContent = `${data.cart_count} item${data.cart_count !== 1 ? 's' : ''}`;
                         });
                     }
                     // Show success message
@@ -577,10 +943,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 // Update ALL cart badges (mobile + desktop)
-                const badges = document.querySelectorAll("#cart-count");
+                const badges = document.querySelectorAll("#cart-count, .cart-badge");
                 badges.forEach(badge => {
                     badge.innerText = data.cart_count;
+                    badge.style.display = data.cart_count === 0 ? 'none' : '';
                 });
+
+                // Update cart page header badge (if present)
+                const headerBadges2 = document.querySelectorAll('.cart-header .badge');
+                if (headerBadges2.length > 0) {
+                    headerBadges2.forEach(hb => {
+                        hb.textContent = `${data.cart_count} item${data.cart_count !== 1 ? 's' : ''}`;
+                    });
+                }
 
                 // Update subtotal
                 const subtotalElement = document.getElementById("cart-subtotal");
@@ -662,5 +1037,175 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 
-// Initialize category slider when DOM is ready
+/* ================= RELATED PRODUCTS SLIDER ================= */
+function initRelatedSlider() {
+    const container = document.getElementById('relatedSlider');
+    if (!container) return;
+
+    const rawItems = Array.from(container.querySelectorAll('.related-slide-item'));
+    if (rawItems.length === 0) return;
+
+    const viewport = container.querySelector('.related-slider-viewport');
+    const track = container.querySelector('.related-slider-track');
+
+    // Inject styles once
+    if (!document.getElementById('related-slider-styles')) {
+        const s = document.createElement('style');
+        s.id = 'related-slider-styles';
+        s.textContent = `
+            .related-slider { position: relative; }
+            .related-slider-viewport { overflow: hidden; }
+            .related-slider-track { display: flex; width: 100%; transition: transform 0.5s ease; will-change: transform; }
+            .related-slide-item { box-sizing: border-box; padding: 0 0.5rem; }
+            /* Overlay arrows */
+            .related-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1000; background: #007bff; border: none; width: 44px; height: 44px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff; opacity:0.8; transition: opacity 0.2s ease, transform 0.15s ease; }
+            .related-arrow:hover { opacity: 1; transform: translateY(-50%) scale(1.05); }
+            .related-arrow:active { transform: translateY(-48%) scale(0.98); }
+            .related-arrow-left { left: 8px; }
+            .related-arrow-right { right: 8px; }
+        `;
+        document.head.appendChild(s);
+    }
+
+    // Determine items per slide depending on width
+    function itemsPerView() {
+        const w = window.innerWidth;
+        if (w < 768) return 2;  // Mobile: 2 items
+        if (w < 1200) return 3; // Tablet: 3 items
+        return 4;               // Desktop: 4 items
+    }
+
+    let perView = itemsPerView();
+
+    // Controls (overlay)
+    const btnPrevOverlay = container.querySelector('#relatedPrevOverlay');
+    const btnNextOverlay = container.querySelector('#relatedNextOverlay');
+
+    // Build track as a single flex row of items
+    function buildSlides() {
+        track.innerHTML = '';
+        rawItems.forEach((itm) => {
+            itm.style.flex = '';
+            itm.style.maxWidth = '';
+            track.appendChild(itm);
+        });
+
+        // set widths — use the smaller of perView and total items so cards fully fit
+        const totalItems = rawItems.length;
+        const cols = Math.min(perView, totalItems) || 1;
+        const itemWidthPercent = 100 / cols;
+        track.querySelectorAll('.related-slide-item').forEach(itm => {
+            itm.style.flex = `0 0 ${itemWidthPercent}%`;
+            itm.style.maxWidth = `${itemWidthPercent}%`;
+        });
+
+        updateControlsVisibility();
+    }
+
+    function updateControlsVisibility() {
+        const total = track.querySelectorAll('.related-slide-item').length;
+        // On mobile we want slider when 2+ items exist
+        if (window.innerWidth < 768) {
+            if (total >= 2) {
+                if (btnPrevOverlay) btnPrevOverlay.style.display = 'flex';
+                if (btnNextOverlay) btnNextOverlay.style.display = 'flex';
+            } else {
+                if (btnPrevOverlay) btnPrevOverlay.style.display = 'none';
+                if (btnNextOverlay) btnNextOverlay.style.display = 'none';
+            }
+        } else {
+            // Desktop/tablet: show arrows only if more items than perView
+            if (total > perView) {
+                if (btnPrevOverlay) btnPrevOverlay.style.display = 'flex';
+                if (btnNextOverlay) btnNextOverlay.style.display = 'flex';
+            } else {
+                if (btnPrevOverlay) btnPrevOverlay.style.display = 'none';
+                if (btnNextOverlay) btnNextOverlay.style.display = 'none';
+            }
+        }
+    }
+
+    buildSlides();
+
+    let index = 0; // index of first visible item
+    function goTo(idx) {
+        const items = track.querySelectorAll('.related-slide-item');
+        if (items.length === 0) return;
+
+        const maxIndex = Math.max(0, items.length - perView);
+
+        // Wrap around for continuous looping
+        if (idx > maxIndex) {
+            index = 0;
+        } else if (idx < 0) {
+            index = maxIndex;
+        } else {
+            index = idx;
+        }
+
+        const itemWidthPx = viewport.clientWidth / perView;
+        const offset = index * itemWidthPx;
+        track.style.transform = `translateX(-${offset}px)`;
+    }
+
+    function bindControl(btn, step) {
+        if (!btn) return;
+        btn.addEventListener('click', () => { goTo(index + step); });
+    }
+
+    bindControl(btnPrevOverlay, -1);
+    bindControl(btnNextOverlay, +1);
+
+    // Touch swipe support for mobile: allow users to swipe to next/prev
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const SWIPE_THRESHOLD = 30; // px
+
+    if (viewport) {
+        viewport.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchEndX = touchStartX;
+        }, { passive: true });
+
+        viewport.addEventListener('touchmove', (e) => {
+            touchEndX = e.touches[0].clientX;
+        }, { passive: true });
+
+        viewport.addEventListener('touchend', () => {
+            const dx = touchStartX - touchEndX;
+            if (Math.abs(dx) > SWIPE_THRESHOLD) {
+                if (dx > 0) {
+                    goTo(index + 1);
+                } else {
+                    goTo(index - 1);
+                }
+            }
+        }, { passive: true });
+    }
+
+    // Rebuild on resize if perView changes
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            const newPer = itemsPerView();
+            if (newPer !== perView) {
+                perView = newPer;
+                const currentItems = Array.from(container.querySelectorAll('.related-slide-item'));
+                rawItems.length = 0; 
+                currentItems.forEach(it => rawItems.push(it));
+                buildSlides();
+                goTo(0);
+            } else {
+                updateControlsVisibility();
+                goTo(index);
+            }
+        }, 150);
+    });
+}
+
+// Initialize category slider and featured slider and latest slider when DOM is ready
 document.addEventListener("DOMContentLoaded", initCategorySlider);
+document.addEventListener("DOMContentLoaded", initFeaturedSlider);
+document.addEventListener("DOMContentLoaded", initLatestSlider);
+document.addEventListener("DOMContentLoaded", initRelatedSlider);

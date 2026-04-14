@@ -1,0 +1,321 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block title %}Coupons{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">Coupons</h3>
+    <div class="d-flex gap-2">
+        <button type="submit" form="bulkDeleteForm" class="btn btn-danger rounded-pill px-4 d-none" id="bulkDeleteBtn" onclick="return confirm('Are you sure you want to delete selected coupons?')">
+            <i class="fa fa-trash me-2"></i> Delete Selected (<span id="selectedCount">0</span>)
+        </button>
+        <button class="btn btn-light rounded-pill px-4 border shadow-sm" data-bs-toggle="modal" data-bs-target="#filterModal">
+            <i class="fa fa-filter me-2"></i> Filter
+        </button>
+        <button class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#couponAddModal">
+            <i class="fa fa-plus me-1"></i> Add Coupon
+        </button>
+    </div>
+</div>
+
+<div class="content-card">
+    <div class="table-responsive">
+        <form action="{% url 'admin_panel:coupons_bulk_delete' %}" method="post" id="bulkDeleteForm">
+            {% csrf_token %}
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"><input type="checkbox" class="form-check-input" id="selectAll"></th>
+                        <th>Code</th>
+                        <th>Discount</th>
+                        <th>Min Amount</th>
+                        <th>Expiry</th>
+                        <th>Status</th>
+                        <th>Usage</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for coupon in coupons %}
+                    <tr>
+                        <td><input type="checkbox" name="selected_ids" value="{{ coupon.id }}" class="form-check-input item-checkbox"></td>
+                        <td class="fw-bold">{{ coupon.code }}</td>
+                        <td>
+                            {% if coupon.discount_type == 'percent' %}
+                            <span class="badge bg-info text-dark">{{ coupon.discount_value }}% OFF</span>
+                            {% elif coupon.discount_type == 'amount' %}
+                            <span class="badge bg-success">₹{{ coupon.discount_value }} OFF</span>
+                            {% else %}
+                            <span class="badge bg-primary">FREE SHIPPING</span>
+                            {% endif %}
+                        </td>
+                        <td>₹{{ coupon.minimum_amount }}</td>
+                        <td>
+                            {% if coupon.expiry_date %}
+                                {{ coupon.expiry_date|date:"M d, Y" }}
+                            {% else %}
+                                <span class="text-muted">No Expiry</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if coupon.active %}
+                                {% if coupon.is_expired %}
+                                <span class="badge bg-warning text-dark">Expired</span>
+                                {% else %}
+                                <span class="badge bg-success">Active</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ coupon.used_by.count }} uses</span>
+                            {% if coupon.one_time_use %}
+                            <span class="badge bg-warning text-dark ms-1">Single Use</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#couponEditModal{{ coupon.id }}">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-url="{% url 'admin_panel:coupon_delete' coupon.id %}" onclick="if(confirm('Delete this coupon?')){ var f=document.createElement('form'); f.method='post'; f.action=this.getAttribute('data-url'); var i=document.createElement('input'); i.type='hidden'; i.name='csrfmiddlewaretoken'; i.value='{{ csrf_token }}'; f.appendChild(i); document.body.appendChild(f); f.submit(); }">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">No coupons found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+    </div>
+</div>
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Filter Coupons</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="get" action="">
+        <div class="modal-body">
+            {% if search_query %}
+            <input type="hidden" name="q" value="{{ search_query }}">
+            {% endif %}
+            
+            <div class="mb-3">
+                <label class="form-label text-muted small fw-bold text-uppercase">Active Status</label>
+                <select name="active" class="form-select">
+                    <option value="">All</option>
+                    <option value="yes" {% if request.GET.active == 'yes' %}selected{% endif %}>Active</option>
+                    <option value="no" {% if request.GET.active == 'no' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Min Discount</label>
+                    <input type="number" name="min_val" class="form-control" value="{{ request.GET.min_val }}">
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Max Discount</label>
+                    <input type="number" name="max_val" class="form-control" value="{{ request.GET.max_val }}">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Expiry Start Date</label>
+                    <input type="date" name="exp_from" class="form-control" value="{{ request.GET.exp_from }}">
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Expiry End Date</label>
+                    <input type="date" name="exp_to" class="form-control" value="{{ request.GET.exp_to }}">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer border-top-0">
+            <a href="." class="btn btn-light">Clear Filters</a>
+            <button type="submit" class="btn btn-primary px-4">Apply Filters</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.item-checkbox');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const selectedCount = document.getElementById('selectedCount');
+
+        function updateState() {
+            const checkedCount = document.querySelectorAll('.item-checkbox:checked').length;
+            selectedCount.textContent = checkedCount;
+            if (checkedCount > 0) {
+                bulkDeleteBtn.classList.remove('d-none');
+            } else {
+                bulkDeleteBtn.classList.add('d-none');
+            }
+        }
+
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            updateState();
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                updateState();
+                if (!this.checked) {
+                    selectAll.checked = false;
+                }
+            });
+        });
+    });
+</script>
+
+<!-- Add Modal -->
+<div class="modal fade" id="couponAddModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Add New Coupon</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'admin_panel:coupon_add' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Coupon Code</label>
+                            {{ form.code }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Expiry Date</label>
+                            {{ form.expiry_date }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Type</label>
+                            {{ form.discount_type }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Value</label>
+                            {{ form.discount_value }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Min Amount</label>
+                            {{ form.minimum_amount }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Specific Users (Optional)</label>
+                        {{ form.users }}
+                        <small class="text-muted">Hold Ctrl/Cmd to select multiple. Leave empty for all users.</small>
+                    </div>
+
+                    <div class="d-flex gap-4 mb-3">
+                        <div class="form-check form-switch">
+                            {{ form.active }}
+                            <label class="form-check-label" for="{{ form.active.id_for_label }}">Active</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            {{ form.one_time_use }}
+                            <label class="form-check-label" for="{{ form.one_time_use.id_for_label }}">One Time Use</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4">Create Coupon</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% for coupon in coupons %}
+<!-- Edit Modal -->
+<div class="modal fade" id="couponEditModal{{ coupon.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Edit Coupon: {{ coupon.code }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'admin_panel:coupon_edit' coupon.id %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Coupon Code</label>
+                            <input type="text" name="code" class="form-control" value="{{ coupon.code }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Expiry Date</label>
+                            <input type="date" name="expiry_date" class="form-control" value="{{ coupon.expiry_date|date:'Y-m-d' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Type</label>
+                            <select name="discount_type" class="form-control">
+                                <option value="percent" {% if coupon.discount_type == 'percent' %}selected{% endif %}>Percentage</option>
+                                <option value="amount" {% if coupon.discount_type == 'amount' %}selected{% endif %}>Fixed Amount</option>
+                                <option value="free_shipping" {% if coupon.discount_type == 'free_shipping' %}selected{% endif %}>Free Shipping</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Value</label>
+                            <input type="number" name="discount_value" class="form-control" value="{{ coupon.discount_value }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label text-muted small fw-bold text-uppercase">Min Amount</label>
+                            <input type="number" name="minimum_amount" class="form-control" value="{{ coupon.minimum_amount }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Specific Users</label>
+                        <select name="users" class="form-select" multiple>
+                            {% for user in all_users %}
+                            <option value="{{ user.id }}" {% if user in coupon.users.all %}selected{% endif %}>{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="d-flex gap-4 mb-3">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" name="active" class="form-check-input" id="active{{ coupon.id }}" {% if coupon.active %}checked{% endif %}>
+                            <label class="form-check-label" for="active{{ coupon.id }}">Active</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input type="checkbox" name="one_time_use" class="form-check-input" id="otu{{ coupon.id }}" {% if coupon.one_time_use %}checked{% endif %}>
+                            <label class="form-check-label" for="otu{{ coupon.id }}">One Time Use</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

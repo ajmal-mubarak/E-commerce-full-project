@@ -9,14 +9,20 @@
 
     <!-- ===== PAGE HEADING + SORT ===== -->
     <div class="row align-items-center mb-4">
-        <div class="col-md-6">
-            <h2 class="fw-bold">All Products</h2>
+        <div class="col-md-6 d-flex align-items-center gap-3">
+            <h2 class="fw-bold mb-3">All Products</h2>
+
         </div>
 
-        <div class="col-md-6 text-md-end mt-lg-5">
-            <select class="form-select w-auto d-inline-block"
-                    onchange="location.href='?sort=' + this.value;">
-                <option value="">Default Sort</option>
+        <div class="col-md-6 mt-lg-5 d-flex justify-content-md-end align-items-center gap-2">
+            <button class="btn btn-outline-dark rounded-pill px-3 shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#filterModal">
+                <i class="fa fa-filter"></i> Filter
+            </button>
+            <select class="form-select w-auto d-inline-block sort-select"
+                    onchange="location.href='?sort=' + this.value + (new URLSearchParams(window.location.search).get('category') ? '&category=' + new URLSearchParams(window.location.search).get('category') : '');">
+                <option value="random" {% if sort == 'random' or sort == '' %}selected{% endif %}>
+                    Random Sort
+                </option>
 
                 <option value="price" {% if sort == 'price' %}selected{% endif %}>
                     Sort By Price (Low → High)
@@ -39,7 +45,7 @@
 
         {% for product in products %}
 <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm p-2 position-relative">
+    <div class="card border-0 shadow-sm p-2 position-relative product-card">
 
         <!-- Wishlist Icon -->
 <a href="javascript:void(0)"
@@ -52,13 +58,32 @@
 
 
         <a href="{% url 'product_details' product.slug %}">
-            <img src="{{ product.main_image.url }}"
-                 class="card-img-top"
-                 style="height:250px; object-fit:cover;">
+            <div class="position-relative">
+                {% if product.stock == 0 %}
+                <span class="badge bg-danger position-absolute top-0 start-0 m-2">Out of Stock</span>
+                {% endif %}
+                {% if product.main_image %}
+                <img src="{{ product.main_image.url }}"
+                     class="card-img-top card-img-top1"
+                     style="height:250px; object-fit:cover; {% if product.stock == 0 %}opacity: 0.6;{% endif %}">
+                {% else %}
+                <img src="{% static 'images/no-image.png' %}"
+                     class="card-img-top card-img-top1"
+                     style="height:250px; object-fit:cover; {% if product.stock == 0 %}opacity: 0.6;{% endif %}">
+                {% endif %}
+            </div>
         </a>
 
         <div class="card-body text-center">
             <h5 class="card-title">{{ product.name }}</h5>
+
+            {% if product.stock == 0 %}
+            <p class="text-danger small mb-1 fw-bold" style="color: #dc3545 !important;">Out of Stock</p>
+            {% elif product.stock <= 5 %}
+            <p class="text-warning small mb-1 fw-bold" style="color: #ffc107 !important;">{{ product.stock }} left</p>
+            {% else %}
+            <p class="text-success small mb-1 fw-bold" style="color: #198754 !important;">Available: {{ product.stock }}</p>
+            {% endif %}
 
             <div class="rating mb-1">
                 <i class="fa fa-star"></i><i class="fa fa-star"></i>
@@ -80,23 +105,57 @@
 
 
     <!-- ===== PAGINATION ===== -->
-    <div class="d-flex justify-content-center mt-4">
+    <div class="d-flex justify-content-center mt-4 flex-wrap gap-2">
 
         {% if products.has_previous %}
-        <a class="btn btn-outline-dark mx-1"
-           href="?page={{ products.previous_page_number }}&sort={{ sort }}">
+        <a class="btn btn-outline-dark"
+           href="?page=1&sort={{ sort }}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"
+           title="First page">
+            ⟨⟨
+        </a>
+        <a class="btn btn-outline-dark"
+           href="?page={{ products.previous_page_number }}&sort={{ sort }}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
             ←
         </a>
         {% endif %}
 
-        <span class="btn btn-dark mx-1 disabled">
-            {{ products.number }}
-        </span>
+        <!-- Page Numbers -->
+        {% for num in products.paginator.page_range %}
+            {% if num == products.number %}
+                <span class="btn btn-dark disabled">{{ num }}</span>
+            {% elif num|add:'-3' <= products.number and num|add:'3' >= products.number %}
+                <a class="btn btn-outline-dark"
+                   href="?page={{ num }}&sort={{ sort }}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                    {{ num }}
+                </a>
+            {% elif forloop.first or forloop.last %}
+                {% if forloop.first %}
+                    <a class="btn btn-outline-dark"
+                       href="?page={{ num }}&sort={{ sort }}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                        {{ num }}
+                    </a>
+                {% endif %}
+                {% if forloop.last and num != products.number %}
+                    {% if products.number < num|add:'-3' %}
+                        <span class="btn btn-outline-dark disabled">...</span>
+                    {% endif %}
+                    <a class="btn btn-outline-dark"
+                       href="?page={{ num }}&sort={{ sort }}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                        {{ num }}
+                    </a>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
 
         {% if products.has_next %}
-        <a class="btn btn-outline-dark mx-1"
-           href="?page={{ products.next_page_number }}&sort={{ sort }}">
+        <a class="btn btn-outline-dark"
+           href="?page={{ products.next_page_number }}&sort={{ sort }}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
             →
+        </a>
+        <a class="btn btn-outline-dark"
+           href="?page={{ products.paginator.num_pages }}&sort={{ sort }}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"
+           title="Last page">
+            ⟩⟩
         </a>
         {% endif %}
 
@@ -150,6 +209,132 @@
     body.dark-mode .wishlist-icon {
         background: rgba(26, 26, 46, 0.9);
         color: #ff6b7a;
+    }
+</style>
+
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg modal-custom">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold">Filter Products</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="get" action="">
+                <div class="modal-body">
+                    {% if sort %}
+                    <input type="hidden" name="sort" value="{{ sort }}">
+                    {% endif %}
+                    
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold text-uppercase d-block mb-2">Category</label>
+                        <select name="category" class="form-select border-0 bg-light-custom">
+                            <option value="">All Categories</option>
+                            {% for c in categories %}
+                            <option value="{{ c.slug }}" {% if request.GET.category == c.slug %}selected{% endif %}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <label class="form-label text-muted small fw-bold text-uppercase d-block mb-2">Price Range</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="number" name="min_price" class="form-control border-0 bg-light-custom" placeholder="Min" value="{{ request.GET.min_price }}">
+                        </div>
+                        <div class="col-6">
+                            <input type="number" name="max_price" class="form-control border-0 bg-light-custom" placeholder="Max" value="{{ request.GET.max_price }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <a href="{% url 'products' %}" class="btn btn-light-custom">Clear</a>
+                    <button type="submit" class="btn btn-dark px-4">Apply</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ... existing styles ... */
+
+    /* Custom Light/Dark variables helper */
+    .bg-light-custom {
+        background-color: #f8f9fa;
+        color: #212529;
+    }
+    .btn-light-custom {
+        background-color: #f8f9fa;
+        color: #212529;
+        border: 1px solid transparent;
+    }
+    .btn-light-custom:hover {
+        background-color: #e2e6ea;
+    }
+
+    /* Dark mode overrides */
+    body.dark-mode .modal-custom {
+        background-color: #1a1a2e; /* Deep blue/black */
+        color: #e0e0e0;
+    }
+    body.dark-mode .modal-custom .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
+    body.dark-mode .modal-custom .text-muted {
+        color: #adb5bd !important;
+    }
+    body.dark-mode .bg-light-custom {
+        background-color: #16213e; /* Slightly lighter dark */
+        color: #e0e0e0;
+        border: 1px solid #2a2a40;
+    }
+    body.dark-mode .btn-light-custom {
+        background-color: #16213e;
+        color: #e0e0e0;
+        border: 1px solid #2a2a40;
+    }
+    body.dark-mode .btn-light-custom:hover {
+        background-color: #1f305e;
+    }
+    body.dark-mode .form-control::placeholder {
+        color: #6c757d;
+    }
+    
+    /* Update trigger button for dark mode */
+    body.dark-mode .btn-outline-dark {
+        color: #f8f9fa;
+        border-color: #f8f9fa;
+    }
+    body.dark-mode .btn-outline-dark:hover {
+        background-color: #f8f9fa;
+        color: #212529;
+    }
+
+    /* Custom Sort Select */
+    .sort-select {
+        border-radius: 50px;
+        border: 1px solid #dee2e6;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        padding-left: 1.25rem;
+        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    .sort-select:hover, .sort-select:focus {
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+        border-color: #212529;
+    }
+    
+    body.dark-mode .sort-select {
+        background-color: #1a1a2e;
+        color: #e0e0e0;
+        border-color: #2a2a40;
+    }
+    body.dark-mode .sort-select:hover, body.dark-mode .sort-select:focus {
+        border-color: #f8f9fa;
     }
 </style>
 

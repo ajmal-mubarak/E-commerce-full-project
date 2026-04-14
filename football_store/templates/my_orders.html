@@ -146,7 +146,7 @@
         <div class="orders-list">
             {% if orders %}
                 {% for order in orders %}
-                    <div class="order-card" data-order-status="{{ order.status }}" data-order-date="{{ order.created_at|date:'Y-m-d' }}">
+                    <div class="order-card {% if order.status == 'cancelled' %}cancelled-order{% endif %}" data-order-status="{{ order.status }}" data-order-date="{{ order.created_at|date:'Y-m-d' }}">
                         <!-- Order Header -->
                         <div class="order-card-header">
                             <div class="order-product-image">
@@ -175,7 +175,7 @@
                                                 Size: {{ first_item.size }}<br>
                                             {% endif %}
                                             {% if first_item.product.category %}
-                                                Category: {{ first_item.product.category }}
+                                                Category: {{ first_item.product.category.name }}
                                             {% endif %}
                                         </p>
                                     {% endif %}
@@ -218,9 +218,13 @@
                                 <div class="status-message error">
                                     Your Payment was not confirmed by the bank.
                                 </div>
-                            {% elif order.payment_status == "PENDING" %}
+                            {% elif order.payment_status == "PENDING" and order.payment_method != "COD" %}
                                 <div class="status-message warning">
                                     Payment not successful. Please contact your bank for any money deducted.
+                                </div>
+                            {% elif order.payment_status == "PAID" %}
+                                <div class="status-message success">
+                                    Payment Successful (Paid)
                                 </div>
                             {% elif order.status == "delivered" %}
                                 <div class="status-message success">
@@ -229,7 +233,7 @@
                             {% endif %}
 
                             <!-- Expandable Timeline Toggle -->
-                            <button class="timeline-toggle-btn" onclick="toggleTimeline(event, {{ order.id }})">
+                            <button class="timeline-toggle-btn" onclick="toggleTimeline(event, '{{ order.id }}')">
                                 <i class="fa fa-chevron-down"></i> View Timeline
                             </button>
                         </div>
@@ -328,6 +332,10 @@
                                         <i class="fa fa-star"></i> Rate & Review Product
                                     </a>
                                 {% endwith %}
+                            {% elif order.status == "processing" %}
+                                <a href="{% url 'cancel_order' order.id %}" class="action-link cancel-link bg-danger" onclick="return confirm('Are you sure you want to cancel this order?')">
+                                    <i class="fa fa-times-circle"></i> Cancel Order
+                                </a>
                             {% endif %}
                         </div>
                     </div>
@@ -794,6 +802,37 @@ body.dark-mode .order-card:hover {
     border-radius: 8px;
     overflow: hidden;
     background: #f0f0f0;
+}
+
+.order-card.cancelled-order {
+    opacity: 0.75;
+    background: #fafafa;
+}
+
+.order-card.cancelled-order .status-badge {
+    filter: grayscale(100%);
+    opacity: 0.8;
+}
+
+/* Cancel Button */
+.cancel-link {
+    color: #dc3545;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    background: #fff5f5;
+    transition: all 0.2s;
+    border: 1px solid #ffebeb;
+}
+
+.cancel-link:hover {
+    background: #fee2e2;
+    color: #c53030;
+    border-color: #fca5a5;
 }
 
 body.dark-mode .order-product-image {

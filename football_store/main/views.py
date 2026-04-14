@@ -10,7 +10,7 @@ def index(request):
     theme = ThemeSettings.objects.all()
 
     # Featured products
-    featured = Product.objects.filter(is_live=True, is_featured=True)[:4]
+    featured = Product.objects.filter(is_live=True, is_featured=True)
 
     # Latest products
     latest = Product.objects.filter(is_live=True).order_by('-created_at')[:8]
