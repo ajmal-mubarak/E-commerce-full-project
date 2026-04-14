@@ -1,6 +1,6 @@
 # 🛒 E-Commerce Django Project
 
-A full-featured eCommerce web application built using Django.
+A **production-ready eCommerce web application** built with Django, featuring secure authentication, cart & wishlist system, order management, and Razorpay payment integration.
 
 ---
 
@@ -12,7 +12,46 @@ A full-featured eCommerce web application built using Django.
 * Wishlist functionality
 * Order management
 * Razorpay payment integration
-* Admin dashboard (customized)
+* Custom admin dashboard
+
+---
+
+## 🎯 Purpose
+
+This project was built to demonstrate a **real-world eCommerce application** with complete user flow:
+
+* Authentication
+* Product browsing
+* Cart & wishlist
+* Secure checkout with Razorpay
+
+---
+
+## ⚙️ Key Implementations
+
+* Razorpay payment gateway integration
+* Django authentication system
+* Session-based cart handling
+* Wishlist management
+* Order lifecycle tracking
+* Custom admin panel UI
+
+---
+
+## 📂 Project Structure
+
+```
+football_store/
+├── accounts/        # User authentication
+├── products/        # Product listing & details
+├── cart/            # Cart functionality
+├── orders/          # Order management
+├── wishlist/        # Wishlist feature
+├── templates/       # HTML templates
+├── static/          # CSS, JS, Images
+├── media/           # Uploaded files
+├── football_store/  # Main project settings
+```
 
 ---
 
@@ -81,12 +120,6 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-Enter:
-
-* Username
-* Email
-* Password
-
 ---
 
 ### 6. Run the server
@@ -95,19 +128,19 @@ Enter:
 python manage.py runserver
 ```
 
-Open in browser:
+Open:
 
 ```
 http://127.0.0.1:8000/
 ```
 
-Admin panel:
+Admin:
 
 ```
 http://127.0.0.1:8000/admin/
 ```
 
-Custom Admin panel:
+Custom Admin:
 
 ```
 http://127.0.0.1:8000/admin_panel/
@@ -117,7 +150,7 @@ http://127.0.0.1:8000/admin_panel/
 
 ## 🔐 Environment Variables
 
-Create a `.env` file in root directory and add:
+Create a `.env` file:
 
 ```
 SECRET_KEY=your_secret_key
@@ -134,23 +167,21 @@ RAZORPAY_KEY_SECRET=your_secret
 
 ## ⚙️ Additional Setup
 
-### 📧 Email Configuration (Gmail)
+### 📧 Email Configuration
 
-1. Go to your Google Account
-2. Enable **2-Step Verification**
-3. Generate **App Password**
-4. Use that password in `.env`
+* Enable 2-Step Verification in Gmail
+* Generate App Password
+* Add to `.env`
 
 ---
 
 ### 💳 Razorpay Setup
 
-1. Create account at https://razorpay.com/
-2. Go to Dashboard → Settings → API Keys
-3. Generate **Test API Keys**
-4. Add keys in `.env`
+* Create account at https://razorpay.com/
+* Generate Test API Keys
+* Add to `.env`
 
-⚠️ Use **Test Mode** during development
+⚠️ Use test mode during development
 
 ---
 
@@ -159,14 +190,6 @@ RAZORPAY_KEY_SECRET=your_secret
 ### 🏠 Home Page
 
 ![Home](screenshots/home1.jpg)
-
-### 🏠 Home Page (Variant)
-
-![Home](screenshots/home2.jpg)
-
-### 🏠 Home Page (More)
-
-![Home](screenshots/home3.jpg)
 
 ### 🛍️ Products Listing
 
@@ -180,33 +203,17 @@ RAZORPAY_KEY_SECRET=your_secret
 
 ![Cart](screenshots/cart-page.jpg)
 
-### 🎟️ Coupons Page
-
-![Coupons](screenshots/coupons-page.jpg)
-
 ### ❤️ Wishlist
 
 ![Wishlist](screenshots/wishlist-page.jpg)
 
-### 🔐 Login Page
-
-![Login](screenshots/login-page.jpg)
-
-### 👤 Profile Page
-
-![Profile](screenshots/profile-page.jpg)
-
-### 📦 My Orders
+### 📦 Orders
 
 ![Orders](screenshots/myorders-page.jpg)
 
-### ⚙️ Admin Panel (Custom)
+### ⚙️ Admin Panel
 
 ![Admin](screenshots/custom-admin.jpg)
-
-### 🔻 Footer Section
-
-![Footer](screenshots/footer.jpg)
 
 ---
 
@@ -214,11 +221,11 @@ RAZORPAY_KEY_SECRET=your_secret
 
 * Do not commit `.env`, `venv`, or sensitive data
 * Use Razorpay test mode for development
-* Change email credentials before production
+* Update credentials before production
 
 ---
 
-## 🔑 Demo Credentials (Optional)
+## 🔑 Demo Credentials
 
 Admin:
 
