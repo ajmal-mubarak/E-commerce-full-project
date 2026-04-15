@@ -70,7 +70,7 @@ football_store/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/ajmal-mubarak/E-commerce-full-project.git
+git clone https://github.com/ajmal-mubarak/django-ecommerce-football-store.git
 cd E-commerce-full-project
 ```
 
